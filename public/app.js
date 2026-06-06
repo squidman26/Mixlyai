@@ -23,6 +23,31 @@ let messages = [];
 let currentPlan = null;
 let authenticated = false;
 let chatStarted = false;
+let canonicalBaseUrl = null;
+
+function isPreviewHost() {
+  const origin = window.location.origin;
+  if (canonicalBaseUrl) {
+    try {
+      return new URL(origin).origin !== new URL(canonicalBaseUrl).origin;
+    } catch {
+      return false;
+    }
+  }
+  const host = window.location.hostname;
+  return host.endsWith(".vercel.app") && host !== "spotifybot-eight.vercel.app";
+}
+
+function spotifyLoginUrl() {
+  if (isPreviewHost() && canonicalBaseUrl) {
+    return `${canonicalBaseUrl}/api/auth/login`;
+  }
+  return "/api/auth/login";
+}
+
+function goToSpotifyLogin() {
+  window.location.href = spotifyLoginUrl();
+}
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -61,9 +86,7 @@ function renderAuth(user) {
     document.getElementById("logoutBtn").addEventListener("click", logout);
   } else {
     authArea.innerHTML = `<button class="btn btn-spotify" id="loginBtn" type="button">Connect Spotify</button>`;
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      window.location.href = "/api/auth/login";
-    });
+    document.getElementById("loginBtn").addEventListener("click", goToSpotifyLogin);
   }
 }
 
@@ -254,9 +277,7 @@ dryRunBtn.addEventListener("click", () => runApply(true));
 dismissPlan.addEventListener("click", () => planModal.classList.add("hidden"));
 refreshPlaylists.addEventListener("click", loadPlaylists);
 
-loginBtn?.addEventListener("click", () => {
-  window.location.href = "/api/auth/login";
-});
+loginBtn?.addEventListener("click", goToSpotifyLogin);
 
 function showApp() {
   gate.classList.add("hidden");
@@ -303,6 +324,22 @@ gateForm.addEventListener("submit", async (e) => {
   const params = new URLSearchParams(window.location.search);
   const isOAuthReturn = params.has("auth") || params.has("auth_error");
 
+  try {
+    const info = await api("/api/auth/info");
+    canonicalBaseUrl = info.canonicalBaseUrl || null;
+  } catch {
+    canonicalBaseUrl = null;
+  }
+
+  if (
+    isPreviewHost() &&
+    canonicalBaseUrl &&
+    (params.has("auth") || params.has("auth_error") || params.has("code"))
+  ) {
+    window.location.replace(`${canonicalBaseUrl}/?${params}`);
+    return;
+  }
+
   if (params.get("auth") === "success") showToast("Spotify connected!");
   if (params.get("auth_error")) {
     showToast(`Auth failed: ${params.get("auth_error")}`, true);
@@ -334,6 +371,10 @@ gateForm.addEventListener("submit", async (e) => {
 
   const unlocked = await requireGateOnVisit();
   if (!unlocked) return;
+
+  if (isPreviewHost() && canonicalBaseUrl) {
+    showToast("Spotify login uses the production site.", false);
+  }
 
   await checkAuth();
   await startChat();
