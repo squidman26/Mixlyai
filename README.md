@@ -8,8 +8,9 @@ AI playlist builder for Spotify — chat with Claude, match tracks, and create o
 
 - `public/` — Web UI (HTML, CSS, JavaScript)
 - `api/` — Vercel serverless routes (Spotify OAuth, Claude chat, apply playlists)
-- `lib/` — Server-side Spotify, auth, and session helpers
+- `lib/` — Server-side Spotify, auth, Supabase accounts, and session helpers
 - `src/` — Original CLI tools (`npm start`, `npm run chat`, `npm run auth`)
+- `supabase/` — Database migrations for Spotify-linked accounts
 
 ## Deploy on Vercel
 

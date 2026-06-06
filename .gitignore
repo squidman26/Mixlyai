@@ -4,5 +4,3 @@ node_modules/
 .spotify-tokens.json
 *.log
 .vercel
-.next/
-next-env.d.ts
