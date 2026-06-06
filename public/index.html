@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotifybot</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <div class="logo gate-logo" aria-hidden="true">
+        <svg class="logo-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+        </svg>
+      </div>
+      <h2 class="brand-title">Spotifybot</h2>
+      <p class="gate-sub">Enter your access code to continue</p>
+      <form id="gateForm">
+        <input
+          id="gateCode"
+          type="password"
+          inputmode="numeric"
+          placeholder="Access code"
+          autocomplete="off"
+          required
+        />
+        <button class="btn btn-primary gate-btn" type="submit">Unlock</button>
+      </form>
+      <p class="gate-error hidden" id="gateError"></p>
+    </div>
+  </div>
+
+  <div class="app hidden" id="app">
+  <header class="header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg class="logo-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+        </svg>
+      </div>
+      <span class="brand-title">Spotifybot</span>
+    </div>
+    <div class="auth-area" id="authArea">
+      <button class="btn btn-spotify" id="loginBtn" type="button">
+        Connect Spotify
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="tools">
+      <h2>Tools</h2>
+      <button class="tool-btn active" data-panel="chat" type="button">
+        <span class="tool-icon">💬</span>
+        Chat Curator
+      </button>
+      <button class="tool-btn" data-panel="playlists" type="button">
+        <span class="tool-icon">📋</span>
+        My Playlists
+      </button>
+    </aside>
+
+    <section class="panel active" id="panel-chat">
+      <div class="chat" id="chatLog"></div>
+      <form class="chat-input" id="chatForm">
+        <input
+          id="chatMessage"
+          type="text"
+          placeholder="Describe your vibe, genre, or playlist idea…"
+          autocomplete="off"
+        />
+        <button class="btn btn-primary" type="submit">Send</button>
+      </form>
+    </section>
+
+    <section class="panel" id="panel-playlists">
+      <div class="panel-head">
+        <h2>Generated Playlists</h2>
+        <button class="btn btn-ghost" id="refreshPlaylists" type="button">Refresh</button>
+      </div>
+      <div class="playlist-list" id="playlistList">
+        <p class="muted">Connect Spotify to see playlists you create here.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="plan-modal hidden" id="planModal">
+    <div class="plan-card">
+      <h3>Playlist ready</h3>
+      <pre id="planSummary"></pre>
+      <label class="checkbox">
+        <input type="checkbox" id="includeAmbiguous" />
+        Include uncertain matches
+      </label>
+      <div class="plan-actions">
+        <button class="btn btn-primary" id="applyBtn" type="button">Apply to Spotify</button>
+        <button class="btn btn-ghost" id="dryRunBtn" type="button">Dry run</button>
+        <button class="btn btn-ghost" id="dismissPlan" type="button">Keep chatting</button>
+      </div>
+      <div class="apply-result hidden" id="applyResult"></div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -19,7 +19,7 @@ export function stripPlanBlock(text) {
   return text.replace(BLOCK_RE, "").trim();
 }
 
-function normalizePlan(plan) {
+export function normalizePlan(plan) {
   if (!plan.action || !["create", "edit"].includes(plan.action)) {
     throw new Error('Plan must set action to "create" or "edit"');
   }

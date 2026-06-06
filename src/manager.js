@@ -1,7 +1,6 @@
 import { parsePlaylistId } from "./playlist-id.js";
 import { matchRowsFromCsv, printMatchSummary } from "./match-rows.js";
 import {
-  getCurrentUser,
   createPlaylist,
   addTracksToPlaylist,
   getPlaylist,
@@ -38,9 +37,7 @@ export async function applyCreatePlan(plan, opts) {
   const rows = plan._rows;
 
   await runMatchAndApply(rows, opts, async (uris) => {
-    const user = await getCurrentUser();
     const playlist = await createPlaylist(
-      user.id,
       meta.name || "New Playlist",
       meta.description ?? "Created with playlist-builder",
       Boolean(meta.public)

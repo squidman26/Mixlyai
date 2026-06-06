@@ -13,6 +13,8 @@ dotenv.config({ path: join(projectRoot, ".env"), override: true });
 export const SCOPES = [
   "playlist-modify-public",
   "playlist-modify-private",
+  "playlist-read-private",
+  "playlist-read-collaborative",
   "user-read-private",
 ].join(" ");
 

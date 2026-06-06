@@ -66,8 +66,8 @@ function escapeQuery(s) {
   return s.replace(/"/g, '\\"');
 }
 
-export async function createPlaylist(userId, name, description, isPublic) {
-  return api(`/users/${userId}/playlists`, {
+export async function createPlaylist(name, description, isPublic) {
+  return api(`/me/playlists`, {
     method: "POST",
     body: JSON.stringify({
       name,
