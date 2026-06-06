@@ -41,18 +41,26 @@ export default async function handler(req, res) {
     const redirectUri = getRedirectUri(req);
     const session = await exchangeCode(code, redirectUri);
 
+    let supabaseWarning = null;
     try {
       const account = await upsertAccountFromSpotifyUser(session.user);
       if (account?.id) {
         session.accountId = account.id;
+        session.supabaseSyncedAt = Date.now();
       }
     } catch (err) {
       console.error("Supabase account sync failed:", err.message);
+      supabaseWarning = err.message;
     }
 
     setSessionCookie(res, session);
     clearStateCookie(res);
-    redirect(res, `${getBaseUrl(req)}/?auth=success`);
+
+    const params = new URLSearchParams({ auth: "success" });
+    if (supabaseWarning) {
+      params.set("supabase_error", supabaseWarning);
+    }
+    redirect(res, `${getBaseUrl(req)}/?${params}`);
   } catch (err) {
     redirect(
       res,

@@ -20,14 +20,20 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (!valid.accountId && valid.user?.id) {
+    let supabaseError = null;
+    if (valid.user?.id && (!valid.accountId || !valid.supabaseSyncedAt)) {
       try {
         const account = await upsertAccountFromSpotifyUser(valid.user);
         if (account?.id) {
-          valid = { ...valid, accountId: account.id };
+          valid = {
+            ...valid,
+            accountId: account.id,
+            supabaseSyncedAt: Date.now(),
+          };
         }
       } catch (err) {
         console.error("Supabase account sync failed:", err.message);
+        supabaseError = err.message;
       }
     }
 
@@ -39,6 +45,11 @@ export default async function handler(req, res) {
         id: valid.user?.id,
         product: valid.user?.product,
         accountId: valid.accountId ?? null,
+        lastLoginAt: valid.supabaseSyncedAt ?? null,
+      },
+      supabase: {
+        synced: Boolean(valid.accountId && valid.supabaseSyncedAt),
+        error: supabaseError,
       },
     });
   } catch {
