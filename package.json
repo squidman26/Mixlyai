@@ -10,16 +10,29 @@
     "start": "node src/index.js",
     "chat": "node src/index.js chat",
     "auth": "node src/index.js auth",
-    "dev": "vercel dev",
+    "dev": "next dev",
+    "build": "next build",
+    "next:start": "next start",
+    "vercel:dev": "vercel dev",
     "deploy": "vercel --prod"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.107.0",
     "commander": "^13.1.0",
     "csv-parse": "^5.6.0",
     "dotenv": "^16.4.7",
-    "open": "^10.1.0"
+    "next": "^16.2.7",
+    "open": "^10.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "@types/react": "^19.2.17",
+    "typescript": "^6.0.3"
   }
 }
