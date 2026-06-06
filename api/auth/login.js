@@ -1,6 +1,5 @@
-import crypto from "crypto";
 import { SCOPES, loadSpotifyConfig } from "../../lib/config.js";
-import { setStateCookie } from "../../lib/session.js";
+import { createOAuthState } from "../../lib/session.js";
 import { redirect } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
 
@@ -10,7 +9,7 @@ export default function handler(req, res) {
   if (!requireAccess(req, res)) return;
   let config;
   try {
-    config = loadSpotifyConfig();
+    config = loadSpotifyConfig(req);
   } catch (err) {
     res.statusCode = 500;
     res.setHeader("Content-Type", "text/plain");
@@ -20,7 +19,7 @@ export default function handler(req, res) {
     return;
   }
 
-  const state = crypto.randomBytes(16).toString("hex");
+  const state = createOAuthState();
 
   const params = new URLSearchParams({
     client_id: config.clientId,
@@ -30,6 +29,5 @@ export default function handler(req, res) {
     state,
   });
 
-  setStateCookie(res, state);
   redirect(res, `${AUTH_URL}?${params}`);
 }

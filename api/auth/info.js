@@ -8,7 +8,7 @@ export default function handler(req, res) {
 
   let redirectUri;
   try {
-    redirectUri = getRedirectUri();
+    redirectUri = getRedirectUri(req);
   } catch {
     redirectUri = null;
   }

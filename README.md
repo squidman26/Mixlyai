@@ -16,7 +16,8 @@ AI playlist builder for Spotify — chat with Claude, match tracks, and create o
 
 1. Import this repo in [Vercel](https://vercel.com)
 2. Add environment variables from `.env.example`
-3. Add Spotify redirect URI: `https://YOUR-DOMAIN.vercel.app/api/auth/callback`
+3. Add Spotify redirect URIs for every host you use (production, preview, local):
+   `https://YOUR-DOMAIN.vercel.app/api/auth/callback`
 
 ## Local development
 
