@@ -14,7 +14,8 @@
     "deploy": "vercel --prod",
     "setup:production": "node scripts/setup-production.mjs",
     "check:accounts": "node scripts/check-accounts.mjs",
-    "check:integration": "node scripts/check-accounts.mjs --production"
+    "check:integration": "node scripts/check-accounts.mjs --production",
+    "vercel:env": "node scripts/add-vercel-env.mjs"
   },
   "engines": {
     "node": ">=18"
