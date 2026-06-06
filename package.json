@@ -12,7 +12,9 @@
     "auth": "node src/index.js auth",
     "dev": "vercel dev",
     "deploy": "vercel --prod",
-    "setup:production": "node scripts/setup-production.mjs"
+    "setup:production": "node scripts/setup-production.mjs",
+    "check:accounts": "node scripts/check-accounts.mjs",
+    "check:integration": "node scripts/check-accounts.mjs --production"
   },
   "engines": {
     "node": ">=18"

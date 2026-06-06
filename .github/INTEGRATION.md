@@ -1,0 +1,56 @@
+# Vercel + GitHub + Supabase integration
+
+## Current status
+
+| Integration | Status |
+|-------------|--------|
+| GitHub → Vercel auto-deploy | **Connected** — pushes to `main` trigger Production deploys; PRs get Preview deploys |
+| Vercel → Supabase accounts | **Not complete** — needs setup below |
+
+Verify anytime:
+
+```bash
+# Production health (no secrets needed)
+curl https://spotifybot-eight.vercel.app/api/health/supabase
+
+# Full account check (needs secret key)
+SUPABASE_SECRET_KEY=sb_secret_... node scripts/check-accounts.mjs
+```
+
+GitHub Actions also runs `.github/workflows/integration-check.yml` on every push to `main`.
+
+## Finish Supabase setup
+
+### 1. Create tables
+
+Run `supabase/setup.sql` in [Supabase SQL editor](https://supabase.com/dashboard/project/npkmlflciakpzkskkqvy/sql).
+
+### 2. Add Vercel environment variables
+
+In [Vercel project settings](https://vercel.com/playlistmaker-s-projects/spotifybot/settings/environment-variables):
+
+| Variable | Environments |
+|----------|--------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Production, Preview |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Production, Preview |
+| `SUPABASE_SECRET_KEY` | Production, Preview |
+
+Redeploy after saving.
+
+### 3. (Optional) GitHub secret for CI account checks
+
+In GitHub → Settings → Secrets → Actions, add:
+
+- `SUPABASE_SECRET_KEY` — same secret key from Supabase
+
+This lets the integration workflow list logged-in accounts after each deploy.
+
+## Vercel ↔ GitHub connection
+
+If deploys stop triggering:
+
+1. [Vercel Dashboard](https://vercel.com/playlistmaker-s-projects/spotifybot) → Settings → Git
+2. Confirm repository `squidman26/spotifybot` is connected
+3. Production branch should be `main`
+
+Or reconnect: Vercel → Add New → Project → Import `squidman26/spotifybot`.
