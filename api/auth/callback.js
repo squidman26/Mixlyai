@@ -1,3 +1,4 @@
+import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
 import { getBaseUrl } from "../../lib/config.js";
 import { exchangeCode } from "../../lib/spotify.js";
 import {
@@ -28,6 +29,16 @@ export default async function handler(req, res) {
 
   try {
     const session = await exchangeCode(code);
+
+    try {
+      const account = await upsertAccountFromSpotifyUser(session.user);
+      if (account?.id) {
+        session.accountId = account.id;
+      }
+    } catch (err) {
+      console.error("Supabase account sync failed:", err.message);
+    }
+
     setSessionCookie(res, session);
     clearStateCookie(res);
     redirect(res, `${getBaseUrl()}/?auth=success`);

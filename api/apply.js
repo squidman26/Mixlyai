@@ -1,3 +1,4 @@
+import { saveGeneratedPlaylist } from "../lib/accounts.js";
 import { applyPlan } from "../lib/apply.js";
 import { getSession, json, readJsonBody, requireMethod } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
@@ -27,6 +28,19 @@ export default async function handler(req, res) {
     });
 
     save(result.session);
+
+    if (result.session.accountId && result.createdPlaylist) {
+      try {
+        await saveGeneratedPlaylist(
+          result.session.accountId,
+          result.createdPlaylist,
+          result.summary.matched.length
+        );
+      } catch (err) {
+        console.error("Supabase playlist sync failed:", err.message);
+      }
+    }
+
     json(res, 200, {
       summary: result.summary,
       playlistUrl: result.playlistUrl,
