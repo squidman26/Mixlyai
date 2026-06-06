@@ -1,17 +1,18 @@
-import { getRedirectUri } from "../../lib/config.js";
+import { getCanonicalBaseUrl, getRedirectUri } from "../../lib/config.js";
 import { json, requireMethod } from "../../lib/api.js";
-import { requireAccess } from "../../lib/gate.js";
 
 export default function handler(req, res) {
   if (!requireMethod(req, res, "GET")) return;
-  if (!requireAccess(req, res)) return;
 
   let redirectUri;
+  let canonicalBaseUrl;
   try {
-    redirectUri = getRedirectUri();
+    redirectUri = getRedirectUri(req);
+    canonicalBaseUrl = getCanonicalBaseUrl();
   } catch {
     redirectUri = null;
+    canonicalBaseUrl = null;
   }
 
-  json(res, 200, { redirectUri });
+  json(res, 200, { redirectUri, canonicalBaseUrl });
 }

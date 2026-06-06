@@ -1,16 +1,23 @@
-import crypto from "crypto";
-import { SCOPES, loadSpotifyConfig } from "../../lib/config.js";
-import { setStateCookie } from "../../lib/session.js";
+import {
+  SCOPES,
+  getCanonicalBaseUrl,
+  isPreviewDeployment,
+  loadSpotifyConfig,
+} from "../../lib/config.js";
+import { createOAuthState, setStateCookie } from "../../lib/session.js";
 import { redirect } from "../../lib/api.js";
-import { requireAccess } from "../../lib/gate.js";
 
 const AUTH_URL = "https://accounts.spotify.com/authorize";
 
 export default function handler(req, res) {
-  if (!requireAccess(req, res)) return;
+  if (isPreviewDeployment(req)) {
+    redirect(res, `${getCanonicalBaseUrl()}/api/auth/login`);
+    return;
+  }
+
   let config;
   try {
-    config = loadSpotifyConfig();
+    config = loadSpotifyConfig(req);
   } catch (err) {
     res.statusCode = 500;
     res.setHeader("Content-Type", "text/plain");
@@ -20,7 +27,8 @@ export default function handler(req, res) {
     return;
   }
 
-  const state = crypto.randomBytes(16).toString("hex");
+  const { state, nonce } = createOAuthState();
+  setStateCookie(res, nonce);
 
   const params = new URLSearchParams({
     client_id: config.clientId,
@@ -30,6 +38,5 @@ export default function handler(req, res) {
     state,
   });
 
-  setStateCookie(res, state);
   redirect(res, `${AUTH_URL}?${params}`);
 }

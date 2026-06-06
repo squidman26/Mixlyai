@@ -1,3 +1,4 @@
+import { listGeneratedPlaylists } from "../lib/accounts.js";
 import { getUserPlaylists } from "../lib/spotify.js";
 import { mergeGeneratedPlaylists } from "../lib/playlists.js";
 import { getSession, json, requireMethod } from "../lib/api.js";
@@ -15,10 +16,17 @@ export default async function handler(req, res) {
 
   try {
     const result = await getUserPlaylists(session, 50);
-    const playlists = mergeGeneratedPlaylists(
-      session.generatedPlaylists,
-      result.playlists
-    );
+    let storedPlaylists = session.generatedPlaylists ?? [];
+
+    if (session.accountId) {
+      try {
+        storedPlaylists = await listGeneratedPlaylists(session.accountId);
+      } catch (err) {
+        console.error("Supabase playlist load failed:", err.message);
+      }
+    }
+
+    const playlists = mergeGeneratedPlaylists(storedPlaylists, result.playlists);
 
     save({
       ...result.session,
