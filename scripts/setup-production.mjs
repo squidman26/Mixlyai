@@ -34,10 +34,7 @@ async function pushSupabaseSchema() {
     return false;
   }
 
-  const sql = readFileSync(
-    join(ROOT, "supabase/migrations/20250606120000_create_accounts.sql"),
-    "utf8"
-  );
+  const sql = readFileSync(join(ROOT, "supabase/setup.sql"), "utf8");
 
   const res = await fetch(
     `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
@@ -135,16 +132,13 @@ async function pushVercelEnv() {
     await upsertVercelEnv(token, projectId, key, value);
   }
 
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    await upsertVercelEnv(
-      token,
-      projectId,
-      "SUPABASE_SERVICE_ROLE_KEY",
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+  const secretKey =
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (secretKey) {
+    await upsertVercelEnv(token, projectId, "SUPABASE_SECRET_KEY", secretKey);
   } else {
     console.log(
-      "Note: SUPABASE_SERVICE_ROLE_KEY not set locally — add it in Vercel manually"
+      "Note: SUPABASE_SECRET_KEY not set locally — add it in Vercel manually"
     );
   }
 

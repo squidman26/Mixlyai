@@ -341,6 +341,9 @@ gateForm.addEventListener("submit", async (e) => {
   }
 
   if (params.get("auth") === "success") showToast("Spotify connected!");
+  if (params.get("supabase_error")) {
+    showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
+  }
   if (params.get("auth_error")) {
     showToast(`Auth failed: ${params.get("auth_error")}`, true);
   }

@@ -38,12 +38,11 @@ See `.env.example` for required values. Secrets stay on the server — never in 
 
 Spotify sign-in still uses the existing OAuth flow. On connect, the app upserts a row in Supabase `accounts` and stores generated playlists in `generated_playlists`.
 
-1. In [Supabase](https://supabase.com/dashboard/project/npkmlflciakpzkskkqvy) → **Settings → API**, copy the **service_role** key into `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply the schema (pick one):
-   - **SQL editor:** paste `supabase/migrations/20250606120000_create_accounts.sql`
-   - **CLI:** `supabase link --project-ref npkmlflciakpzkskkqvy && supabase db push`
-   - **Script:** `SUPABASE_ACCESS_TOKEN=... npm run setup:production`
-3. On Vercel, add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`, or run:
+1. In [Supabase SQL editor](https://supabase.com/dashboard/project/npkmlflciakpzkskkqvy/sql), run the full script in `supabase/setup.sql` (creates `accounts` + `generated_playlists`).
+2. In Supabase → **Settings → API**, copy the **Secret** key (`sb_secret_...`) into Vercel as `SUPABASE_SECRET_KEY`.
+3. On Vercel, add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY`, or run:
    ```bash
-   VERCEL_TOKEN=... SUPABASE_SERVICE_ROLE_KEY=... npm run setup:production
+   VERCEL_TOKEN=... SUPABASE_SECRET_KEY=... npm run setup:production
+
+Check setup: `GET /api/health/supabase` should return `{ "ok": true }`.
    ```
