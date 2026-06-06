@@ -4,15 +4,12 @@ import {
   isPreviewDeployment,
   loadSpotifyConfig,
 } from "../../lib/config.js";
-import { createOAuthState } from "../../lib/session.js";
+import { createOAuthState, setStateCookie } from "../../lib/session.js";
 import { redirect } from "../../lib/api.js";
-import { requireAccess } from "../../lib/gate.js";
 
 const AUTH_URL = "https://accounts.spotify.com/authorize";
 
 export default function handler(req, res) {
-  if (!requireAccess(req, res)) return;
-
   if (isPreviewDeployment(req)) {
     redirect(res, `${getCanonicalBaseUrl()}/api/auth/login`);
     return;
@@ -30,7 +27,8 @@ export default function handler(req, res) {
     return;
   }
 
-  const state = createOAuthState();
+  const { state, nonce } = createOAuthState();
+  setStateCookie(res, nonce);
 
   const params = new URLSearchParams({
     client_id: config.clientId,

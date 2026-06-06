@@ -1,7 +1,12 @@
 import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
 import { getBaseUrl, getRedirectUri } from "../../lib/config.js";
 import { exchangeCode } from "../../lib/spotify.js";
-import { setSessionCookie, verifyOAuthState } from "../../lib/session.js";
+import {
+  clearStateCookie,
+  readOAuthState,
+  setSessionCookie,
+  verifyOAuthState,
+} from "../../lib/session.js";
 import { redirect } from "../../lib/api.js";
 
 export default async function handler(req, res) {
@@ -18,7 +23,16 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!code || !state || !verifyOAuthState(state)) {
+  const cookieNonce = readOAuthState(req);
+  const stateValid = verifyOAuthState(state, cookieNonce);
+
+  if (!code || !state || !stateValid) {
+    console.error("OAuth state rejected", {
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      hasCookie: Boolean(cookieNonce),
+      host: req.headers.host,
+    });
     redirect(res, `${getBaseUrl(req)}/?auth_error=invalid_state`);
     return;
   }
@@ -37,6 +51,7 @@ export default async function handler(req, res) {
     }
 
     setSessionCookie(res, session);
+    clearStateCookie(res);
     redirect(res, `${getBaseUrl(req)}/?auth=success`);
   } catch (err) {
     redirect(
