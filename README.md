@@ -12,6 +12,15 @@ AI playlist builder for Spotify — chat with Claude, match tracks, and create o
 - `src/` — Original CLI tools (`npm start`, `npm run chat`, `npm run auth`)
 - `supabase/` — Database migrations for Spotify-linked accounts
 
+## Vercel + GitHub + Supabase
+
+GitHub is already connected to Vercel — pushes to `main` deploy to production automatically. See [.github/INTEGRATION.md](.github/INTEGRATION.md) for the full checklist.
+
+```bash
+npm run check:integration   # production health
+npm run check:accounts      # list Supabase logins (needs SUPABASE_SECRET_KEY)
+```
+
 ## Deploy on Vercel
 
 1. Import this repo in [Vercel](https://vercel.com)

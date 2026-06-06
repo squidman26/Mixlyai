@@ -1,0 +1,58 @@
+name: Vercel + Supabase Integration Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PRODUCTION_URL: https://spotifybot-eight.vercel.app
+
+jobs:
+  vercel-github:
+    name: Verify Vercel deploy (GitHub integration)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm production deployment is live
+        run: |
+          curl -fsS "${{ env.PRODUCTION_URL }}/api/auth/info" | tee auth-info.json
+          jq -e '.canonicalBaseUrl' auth-info.json >/dev/null
+          echo "Vercel production is reachable via GitHub-deployed build."
+
+      - name: Check Supabase health on Vercel
+        run: |
+          curl -fsS "${{ env.PRODUCTION_URL }}/api/health/supabase" | tee supabase-health.json
+          cat supabase-health.json
+          if jq -e '.configured == false' supabase-health.json >/dev/null; then
+            echo "::warning::Supabase secret key is not set in Vercel. Add SUPABASE_SECRET_KEY."
+          fi
+          if jq -e '.ok == false' supabase-health.json >/dev/null; then
+            echo "::warning::Supabase is not ready. Run supabase/setup.sql and add SUPABASE_SECRET_KEY to Vercel."
+          fi
+
+  supabase-accounts:
+    name: List logged-in accounts
+    runs-on: ubuntu-latest
+    needs: vercel-github
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Supabase client
+        run: npm install @supabase/supabase-js
+
+      - name: Check accounts table
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: https://npkmlflciakpzkskkqvy.supabase.co
+        run: |
+          if [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "Skip account list: add SUPABASE_SECRET_KEY to GitHub Actions secrets."
+            exit 0
+          fi
+          node scripts/check-accounts.mjs
