@@ -182,3 +182,67 @@ def get_related_artists(
     users = data.get("collection") or []
     next_href = data.get("next_href") or None
     return users, next_href
+
+
+def get_related_tracks(
+    track_urn: str,
+    access_token: str,
+    limit: int = 10,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Fetch tracks related to a SoundCloud track.
+
+    Calls GET /tracks/{track_urn}/related with access=playable and
+    linked_partitioning=true. Returns track objects from the first page and
+    next_href when more pages are available.
+
+    Args:
+        track_urn: SoundCloud track URN (e.g. ``soundcloud:tracks:308946187``).
+        access_token: OAuth access token (client credentials or authorization code).
+        limit: Number of results per page (1–200; API default is 50).
+
+    Returns:
+        A tuple of (tracks, next_href). next_href is None when there are no more pages.
+
+    Raises:
+        SoundCloudUnauthorizedError: On HTTP 401.
+        SoundCloudRateLimitError: On HTTP 429.
+        SoundCloudAPIError: On other non-success HTTP status codes.
+    """
+    if not access_token:
+        raise SoundCloudUnauthorizedError(
+            401,
+            "Authentication failed. An access token is required.",
+        )
+
+    if not track_urn:
+        raise ValueError("track_urn is required")
+
+    if not 1 <= limit <= 200:
+        raise ValueError("limit must be between 1 and 200")
+
+    encoded_urn = quote(track_urn, safe="")
+
+    with httpx.Client(timeout=30.0) as client:
+        response = client.get(
+            f"{API_BASE}/tracks/{encoded_urn}/related",
+            params={
+                "limit": limit,
+                "access": "playable",
+                "linked_partitioning": "true",
+            },
+            headers={
+                "accept": "application/json; charset=utf-8",
+                "Authorization": f"OAuth {access_token}",
+            },
+        )
+
+    _raise_for_status(response)
+    data = response.json()
+
+    if isinstance(data, list):
+        return data, None
+
+    tracks = data.get("collection") or []
+    next_href = data.get("next_href") or None
+    return tracks, next_href
