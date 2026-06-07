@@ -12,6 +12,8 @@ const applyResult = document.getElementById("applyResult");
 const includeAmbiguous = document.getElementById("includeAmbiguous");
 const playlistList = document.getElementById("playlistList");
 const refreshPlaylists = document.getElementById("refreshPlaylists");
+const refreshCredits = document.getElementById("refreshCredits");
+const creditsPanel = document.getElementById("creditsPanel");
 const toast = document.getElementById("toast");
 const gate = document.getElementById("gate");
 const app = document.getElementById("app");
@@ -28,6 +30,8 @@ let currentPlan = null;
 let authenticated = false;
 let chatStarted = false;
 let canonicalBaseUrl = null;
+let creditStatus = null;
+let currentUser = null;
 
 function isPreviewHost() {
   const origin = window.location.origin;
@@ -79,11 +83,17 @@ async function api(path, options = {}) {
   return data;
 }
 
-function renderAuth(user) {
+function renderAuth(user, credits) {
   if (user) {
+    const creditBadge = credits?.unlimited
+      ? '<span class="credits-badge">Unlimited credits</span>'
+      : credits
+        ? `<span class="credits-badge">${credits.credits} credits</span>`
+        : "";
     authArea.innerHTML = `
       <div class="user-chip">
         <span>${escapeHtml(user.name)}</span>
+        ${creditBadge}
         ${user.product === "premium" ? '<span class="badge">Premium</span>' : ""}
         <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
       </div>`;
@@ -104,13 +114,107 @@ async function checkAuth() {
   try {
     const data = await api("/api/auth/status");
     authenticated = data.authenticated;
-    renderAuth(data.authenticated ? data.user : null);
+    creditStatus = data.credits ?? null;
+    currentUser = data.authenticated ? data.user : null;
+    renderAuth(currentUser, creditStatus);
     return data.authenticated;
   } catch {
     authenticated = false;
-    renderAuth(null);
+    creditStatus = null;
+    currentUser = null;
+    renderAuth(null, null);
     return false;
   }
+}
+
+async function loadCredits() {
+  if (!authenticated) {
+    creditsPanel.innerHTML = '<p class="muted">Connect Spotify to view your credit balance.</p>';
+    return;
+  }
+
+  creditsPanel.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const data = await api("/api/credits/status");
+    creditStatus = data;
+    renderAuth(currentUser, creditStatus);
+    renderCreditsPanel(data);
+  } catch (err) {
+    creditsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderCreditsPanel(data) {
+  const balanceText = data.unlimited
+    ? "Unlimited"
+    : `${data.credits} credits remaining`;
+
+  const tierCards = (data.tiers || [])
+    .map((tier) => {
+      const isCurrent = tier.id === data.tier;
+      const isPaid = tier.id !== "free";
+      const action =
+        data.unlimited || isCurrent
+          ? `<span class="muted">${isCurrent ? "Current plan" : "Included"}</span>`
+          : isPaid && data.squareConfigured
+            ? `<button class="btn btn-primary buy-tier-btn" data-tier="${tier.id}" type="button">Buy with Square</button>`
+            : isPaid
+              ? `<span class="muted">Square checkout unavailable</span>`
+              : `<span class="muted">Default plan</span>`;
+
+      return `
+        <div class="tier-card${isCurrent ? " current" : ""}">
+          <h4>${escapeHtml(tier.name)}</h4>
+          <div class="tier-price">${escapeHtml(tier.priceLabel)}</div>
+          <div class="muted">${tier.credits.toLocaleString()} credits</div>
+          ${action}
+        </div>`;
+    })
+    .join("");
+
+  creditsPanel.innerHTML = `
+    <div class="credits-summary">
+      <h3>${escapeHtml(data.tierName)} plan</h3>
+      <div class="credits-balance">${escapeHtml(balanceText)}</div>
+      <p class="muted">${data.unlimited ? "This account has unlimited credits." : `${data.tierCredits.toLocaleString()} credits included on this tier.`}</p>
+      <div class="credits-costs">
+        <span>Chat message: ${data.costs.chatMessage} credit</span>
+        <span>Apply playlist: ${data.costs.applyPlaylist} credits</span>
+        <span>Dry run: free</span>
+      </div>
+    </div>
+    <div class="tier-grid">${tierCards}</div>
+    <p class="credits-note">Paid plans are processed securely through Square. Credits refresh to your tier allowance after purchase.</p>`;
+
+  creditsPanel.querySelectorAll(".buy-tier-btn").forEach((btn) => {
+    btn.addEventListener("click", () => startCheckout(btn.dataset.tier));
+  });
+}
+
+async function startCheckout(tierId) {
+  try {
+    const data = await api("/api/credits/checkout", {
+      method: "POST",
+      body: JSON.stringify({ tier: tierId }),
+    });
+    window.location.href = data.url;
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function updateCreditsFromResponse(data) {
+  if (!creditStatus || data.unlimitedCredits || data.credits == null) return;
+  creditStatus = { ...creditStatus, credits: data.credits };
+  renderAuth(currentUser, creditStatus);
+}
+
+function handleInsufficientCredits(err) {
+  if (!/insufficient credits/i.test(err.message)) return false;
+  showToast("You are out of credits. Open Credits to upgrade.", true);
+  document.querySelector('.tool-btn[data-panel="credits"]')?.click();
+  loadCredits();
+  return true;
 }
 
 async function logout() {
@@ -120,7 +224,8 @@ async function logout() {
     /* still lock locally if the server request fails */
   }
   authenticated = false;
-  renderAuth(null);
+  creditStatus = null;
+  renderAuth(null, null);
   lockChat();
   showToast("Logged out");
 }
@@ -175,13 +280,18 @@ async function startChat() {
     chatLog.querySelector(".msg.system")?.remove();
     addMessage("assistant", data.reply);
     if (data.plan) showPlan(data.plan);
+    updateCreditsFromResponse(data);
   } catch (err) {
     if (/connect spotify/i.test(err.message)) {
       authenticated = false;
       chatStarted = false;
       lockChat();
-      renderAuth(null);
+      renderAuth(null, null);
       showToast(err.message, true);
+      return;
+    }
+    if (handleInsufficientCredits(err)) {
+      chatStarted = false;
       return;
     }
     chatLog.querySelector(".msg.system")?.remove();
@@ -207,14 +317,16 @@ async function sendMessage(text) {
     messages.push({ role: "assistant", content: data.fullReply || data.reply });
     if (data.reply) addMessage("assistant", data.reply);
     if (data.plan) showPlan(data.plan);
+    updateCreditsFromResponse(data);
   } catch (err) {
     if (/connect spotify/i.test(err.message)) {
       authenticated = false;
       lockChat();
-      renderAuth(null);
+      renderAuth(null, null);
       showToast(err.message, true);
       return;
     }
+    if (handleInsufficientCredits(err)) return;
     addMessage("system", `Error: ${err.message}`);
   } finally {
     if (authenticated) {
@@ -277,7 +389,9 @@ async function runApply(dryRun) {
       showToast("Playlist applied!");
       planModal.classList.add("hidden");
     }
+    updateCreditsFromResponse(data);
   } catch (err) {
+    if (handleInsufficientCredits(err)) return;
     showToast(err.message, true);
   } finally {
     applyBtn.disabled = false;
@@ -321,8 +435,11 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
     btn.classList.add("active");
     document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
     if (btn.dataset.panel === "playlists") loadPlaylists();
+    if (btn.dataset.panel === "credits") loadCredits();
   });
 });
+
+refreshCredits?.addEventListener("click", loadCredits);
 
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -406,6 +523,10 @@ gateForm.addEventListener("submit", async (e) => {
   }
 
   if (params.get("auth") === "success") showToast("Spotify connected!");
+  if (params.get("purchase") === "success") {
+    showToast(`Purchase complete! Your credits are updating.`);
+    document.querySelector('.tool-btn[data-panel="credits"]')?.click();
+  }
   if (params.get("supabase_error")) {
     showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
   }
