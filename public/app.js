@@ -23,6 +23,7 @@ const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
 const chatLockLoginBtn = document.getElementById("chatLockLoginBtn");
 const headerCreditsBtn = document.getElementById("headerCreditsBtn");
+const authNotice = document.getElementById("authNotice");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
 let messages = [];
@@ -74,6 +75,32 @@ function formatAuthError(code) {
     return formatAuthError("spotify_not_allowlisted");
   }
   return `Auth failed: ${code}`;
+}
+
+function isAllowlistAuthError(code) {
+  return (
+    code === "spotify_not_allowlisted" ||
+    /not registered|not approved|developer dashboard/i.test(code || "")
+  );
+}
+
+function showAllowlistHelp() {
+  if (!authNotice) return;
+  authNotice.innerHTML = `
+    <strong>Spotify account not allowlisted</strong>
+    <p>This app is in Spotify Development Mode, so only approved emails can sign in (max 5 testers).</p>
+    <ol>
+      <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify Developer Dashboard</a></li>
+      <li>Select this app → <strong>Settings</strong> → <strong>Users and Access</strong></li>
+      <li>Click <strong>Add new user</strong> and enter the email on the Spotify account you tried to use</li>
+      <li>Wait up to 15 minutes, then click Connect Spotify again</li>
+    </ol>
+    <p>For anyone to sign in, apply for <strong>Extended Quota Mode</strong> in the same dashboard.</p>`;
+  authNotice.classList.remove("hidden");
+}
+
+function hideAllowlistHelp() {
+  authNotice?.classList.add("hidden");
 }
 
 function addMessage(role, text) {
@@ -567,7 +594,10 @@ gateForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (params.get("auth") === "success") showToast("Spotify connected!");
+  if (params.get("auth") === "success") {
+    hideAllowlistHelp();
+    showToast("Spotify connected!");
+  }
   if (params.get("purchase") === "success") {
     showToast(`Purchase complete! Your credits are updating.`);
     openCreditsPanel();
@@ -576,7 +606,9 @@ gateForm.addEventListener("submit", async (e) => {
     showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
   }
   if (params.get("auth_error")) {
-    showToast(formatAuthError(params.get("auth_error")), true);
+    const authError = params.get("auth_error");
+    showToast(formatAuthError(authError), true);
+    if (isAllowlistAuthError(authError)) showAllowlistHelp();
   }
 
   if (isOAuthReturn) {
