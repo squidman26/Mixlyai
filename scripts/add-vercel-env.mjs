@@ -20,10 +20,10 @@ if (!key || !value) {
 async function getProjectId() {
   if (process.env.VERCEL_PROJECT_ID) return process.env.VERCEL_PROJECT_ID;
 
-  const projects = await listProjects("mixly");
-  const project = findProject(projects, ["mixly", "spotifybot", "spotifybot-eight"]);
+  const projects = await listProjects("mixlyai");
+  const project = findProject(projects, ["mixlyai", "mixly", "spotifybot", "spotifybot-eight"]);
   if (!project?.id) {
-    throw new Error("Could not find Vercel project. Set VERCEL_PROJECT_ID or run migrate-vercel-to-mixly.mjs first.");
+    throw new Error("Could not find Vercel project. Set VERCEL_PROJECT_ID or run migrate-vercel-to-mixlyai.mjs first.");
   }
   return project.id;
 }

@@ -13,7 +13,7 @@ import { applyPlan } from "./manager.js";
 import { getUserPlaylists } from "./music-cli.js";
 import { getProviderName } from "../lib/music.js";
 
-const TOKEN_FILE = path.join(process.cwd(), ".mixly-tokens.json");
+const TOKEN_FILE = path.join(process.cwd(), ".mixlyai-tokens.json");
 
 function hasTokens(provider) {
   if (!fs.existsSync(TOKEN_FILE)) return false;
@@ -85,7 +85,7 @@ export async function runChat(provider = "youtube") {
   const rl = createInterface({ input, output });
   const providerName = getProviderName(provider);
 
-  console.log("Mixly — chat mode");
+  console.log("MixlyAI — chat mode");
   console.log(`Design a playlist with Claude, then apply it to ${providerName}.\n`);
   console.log(
     "Commands: /quit  /apply (re-run last playlist — apply or dry run again)\n"

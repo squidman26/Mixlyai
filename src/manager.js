@@ -42,7 +42,7 @@ export async function applyCreatePlan(plan, opts) {
     const playlist = await createPlaylist(
       opts.provider,
       meta.name || "New Playlist",
-      meta.description ?? "Created with Mixly",
+      meta.description ?? "Created with MixlyAI",
       Boolean(meta.public)
     );
     await addTracksToPlaylist(opts.provider, playlist.id, uris);

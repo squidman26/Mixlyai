@@ -11,7 +11,7 @@ Verify anytime:
 
 ```bash
 # Production health (no secrets needed)
-curl https://mixly.vercel.app/api/health/supabase
+curl https://mixlyai.vercel.app/api/health/supabase
 
 # Full account check (needs secret key)
 SUPABASE_SECRET_KEY=sb_secret_... node scripts/check-accounts.mjs
@@ -43,7 +43,7 @@ For existing Spotifybot deployments, also run `supabase/migrations/2025060812000
 
 Redeploy after saving.
 
-### 3. Migrate Vercel project from Spotifybot
+### 3. Migrate Vercel project to MixlyAI
 
 Rename the existing Vercel project (preserves env vars and GitHub integration):
 
@@ -51,12 +51,12 @@ Rename the existing Vercel project (preserves env vars and GitHub integration):
 VERCEL_TOKEN=... npm run migrate:vercel
 ```
 
-This renames `spotifybot` → `mixly`, sets `APP_BASE_URL` and `OAUTH_REDIRECT_URI` to `https://mixly.vercel.app`, and keeps your deployment history.
+This renames `spotifybot` (or `mixly`) → `mixlyai`, sets `APP_BASE_URL` and `OAUTH_REDIRECT_URI` to `https://mixlyai.vercel.app`, and keeps your deployment history.
 
 To start fresh instead:
 
 ```bash
-VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixly.mjs --recreate --delete-old
+VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixlyai.mjs --recreate --delete-old
 ```
 
 After migration, remove legacy `SPOTIFY_*` env vars and add `YOUTUBE_*` / `SOUNDCLOUD_*` from `.env.example`.
@@ -67,15 +67,15 @@ After migration, remove legacy `SPOTIFY_*` env vars and add `YOUTUBE_*` / `SOUND
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable **YouTube Data API v3**
 3. Create OAuth 2.0 credentials (Web application)
-4. Add redirect URI: `https://your-domain.vercel.app/api/auth/callback`
+4. Add redirect URI: `https://mixlyai.vercel.app/api/auth/callback`
 
 **SoundCloud**
 1. Register an app in the [SoundCloud Developer Portal](https://developers.soundcloud.com/)
-2. Add redirect URI: `https://your-domain.vercel.app/api/auth/callback`
+2. Add redirect URI: `https://mixlyai.vercel.app/api/auth/callback`
 
 ### 5. Rename GitHub repo (optional)
 
-In GitHub → Settings → General → Repository name, rename `spotifybot` to `Mixly`. Re-link the repo in Vercel if the GitHub integration breaks.
+In GitHub → Settings → General → Repository name, rename to `MixlyAI`. Re-link the repo in Vercel if the GitHub integration breaks.
 
 ### 6. (Optional) GitHub secret for CI account checks
 

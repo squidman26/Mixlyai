@@ -16,7 +16,7 @@ import { playlistUrl } from "../lib/music.js";
 const program = new Command();
 
 program
-  .name("mixly")
+  .name("mixlyai")
   .description("Build and edit YouTube Music or SoundCloud playlists with Claude or CSV");
 
 program
@@ -77,7 +77,7 @@ program
         playlist: {
           name: opts.name,
           description:
-            opts.description ?? `Created by Mixly from ${opts.file}`,
+            opts.description ?? `Created by MixlyAI from ${opts.file}`,
           public: opts.public,
         },
         _rows: rows,

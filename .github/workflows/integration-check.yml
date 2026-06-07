@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PRODUCTION_URL: https://mixly.vercel.app
+  PRODUCTION_URL: https://mixlyai.vercel.app
 
 jobs:
   vercel-github:

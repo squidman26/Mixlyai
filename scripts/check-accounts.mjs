@@ -20,7 +20,7 @@ const SECRET_KEY =
   process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const PRODUCTION_URL =
-  process.env.APP_BASE_URL || "https://mixly.vercel.app";
+  process.env.APP_BASE_URL || "https://mixlyai.vercel.app";
 
 async function checkProductionHealth() {
   const res = await fetch(`${PRODUCTION_URL}/api/health/supabase`);

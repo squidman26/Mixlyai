@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * Migrate the old Spotifybot Vercel project to Mixly.
+ * Migrate the old Spotifybot/Mixly Vercel project to MixlyAI.
  *
  * Default (recommended): rename the existing project to preserve env vars,
  * GitHub link, and deployment history.
  *
  * Usage:
- *   VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixly.mjs
- *   VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixly.mjs --recreate --delete-old
- *   VERCEL_TOKEN=... VERCEL_TEAM_ID=team_... node scripts/migrate-vercel-to-mixly.mjs
+ *   VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixlyai.mjs
+ *   VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixlyai.mjs --recreate --delete-old
+ *   VERCEL_TOKEN=... VERCEL_TEAM_ID=team_... node scripts/migrate-vercel-to-mixlyai.mjs
  *
  * Options:
  *   --old-name <name>     Old project name (default: spotifybot)
- *   --new-name <name>     New project name (default: mixly)
- *   --base-url <url>      Production URL to set in env (default: https://mixly.vercel.app)
+ *   --new-name <name>     New project name (default: mixlyai)
+ *   --base-url <url>      Production URL to set in env (default: https://mixlyai.vercel.app)
  *   --recreate            Create a fresh project instead of renaming
  *   --delete-old          Delete the old project after recreate (requires --recreate)
  *   --dry-run             Print actions without making changes
@@ -33,8 +33,8 @@ import {
 function parseArgs(argv) {
   const opts = {
     oldName: "spotifybot",
-    newName: "mixly",
-    baseUrl: "https://mixly.vercel.app",
+    newName: "mixlyai",
+    baseUrl: "https://mixlyai.vercel.app",
     recreate: false,
     deleteOld: false,
     dryRun: false,
@@ -56,6 +56,7 @@ function parseArgs(argv) {
 const LEGACY_NAMES = [
   "spotifybot",
   "spotifybot-eight",
+  "mixly",
   "playlist-builder",
   "playlistmaker",
 ];
@@ -67,7 +68,7 @@ const LEGACY_ENV_KEYS = [
   "UNLIMITED_CREDITS_SPOTIFY_IDS",
 ];
 
-async function updateMixlyEnv(projectIdOrName, baseUrl, teamId, dryRun) {
+async function updateMixlyAiEnv(projectIdOrName, baseUrl, teamId, dryRun) {
   const updates = [
     ["APP_BASE_URL", baseUrl],
     ["OAUTH_REDIRECT_URI", `${baseUrl}/api/auth/callback`],
@@ -130,7 +131,7 @@ async function renameFlow(opts, teamId) {
 
   if (!oldProject) {
     throw new Error(
-      `Could not find old Vercel project matching "${opts.oldName}". Set --old-name or create the Mixly project manually.`
+      `Could not find old Vercel project matching "${opts.oldName}". Set --old-name or create the MixlyAI project manually.`
     );
   }
 
@@ -146,8 +147,8 @@ async function renameFlow(opts, teamId) {
     }
   }
 
-  console.log("Updating Mixly environment variables:");
-  await updateMixlyEnv(opts.newName, opts.baseUrl, teamId, opts.dryRun);
+  console.log("Updating MixlyAI environment variables:");
+  await updateMixlyAiEnv(opts.newName, opts.baseUrl, teamId, opts.dryRun);
 
   console.log("\nDone.");
   console.log(`Production URL: ${opts.baseUrl}`);
@@ -174,7 +175,7 @@ async function recreateFlow(opts, teamId) {
   let newProject = { id: opts.newName, name: opts.newName };
 
   if (!opts.dryRun) {
-    const gitRepo = process.env.GITHUB_REPO || "squidman26/Mixly";
+    const gitRepo = process.env.GITHUB_REPO || "squidman26/MixlyAI";
     newProject = await createProject(opts.newName, { teamId, gitRepo });
   }
 
@@ -189,8 +190,8 @@ async function recreateFlow(opts, teamId) {
     console.log(`Copied ${copied}, skipped ${skipped}`);
   }
 
-  console.log("Setting Mixly environment variables:");
-  await updateMixlyEnv(newProject.id ?? opts.newName, opts.baseUrl, teamId, opts.dryRun);
+  console.log("Setting MixlyAI environment variables:");
+  await updateMixlyAiEnv(newProject.id ?? opts.newName, opts.baseUrl, teamId, opts.dryRun);
 
   if (opts.deleteOld && oldProject) {
     console.log(`Deleting old project: ${oldProject.name}`);
@@ -213,7 +214,7 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const teamId = process.env.VERCEL_TEAM_ID?.trim() || undefined;
 
-  console.log("=== Mixly Vercel migration ===\n");
+  console.log("=== MixlyAI Vercel migration ===\n");
   if (opts.dryRun) console.log("(dry run — no changes will be made)\n");
 
   if (opts.recreate) {

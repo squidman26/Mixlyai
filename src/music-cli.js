@@ -6,7 +6,7 @@ import { loadConfig } from "./config.js";
 import * as youtube from "../lib/youtube.js";
 import * as soundcloud from "../lib/soundcloud.js";
 
-const TOKEN_FILE = path.join(process.cwd(), ".mixly-tokens.json");
+const TOKEN_FILE = path.join(process.cwd(), ".mixlyai-tokens.json");
 
 function getClient(provider) {
   if (provider === "youtube") return youtube;

@@ -46,7 +46,7 @@ function isPreviewHost() {
     }
   }
   const host = window.location.hostname;
-  return host.endsWith(".vercel.app") && host !== "mixly.vercel.app";
+  return host.endsWith(".vercel.app") && host !== "mixlyai.vercel.app";
 }
 
 function loginUrl(provider) {

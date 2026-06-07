@@ -1,6 +1,6 @@
 # Branch protection (main)
 
-Recommended settings for the Mixly repository:
+Recommended settings for the MixlyAI repository:
 
 - Require pull request before merging
 - Require status checks: **Vercel + Supabase Integration Check**

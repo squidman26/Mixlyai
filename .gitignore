@@ -1,6 +1,6 @@
 node_modules/
 .env
 .env.local
-.mixly-tokens.json
+.mixlyai-tokens.json
 *.log
 .vercel

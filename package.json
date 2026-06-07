@@ -1,10 +1,10 @@
 {
-  "name": "mixly",
+  "name": "mixlyai",
   "version": "2.0.0",
   "description": "AI playlist builder for YouTube Music and SoundCloud",
   "type": "module",
   "bin": {
-    "mixly": "./src/index.js"
+    "mixlyai": "./src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",
@@ -16,7 +16,7 @@
     "check:accounts": "node scripts/check-accounts.mjs",
     "check:integration": "node scripts/check-accounts.mjs --production",
     "vercel:env": "node scripts/add-vercel-env.mjs",
-    "migrate:vercel": "node scripts/migrate-vercel-to-mixly.mjs"
+    "migrate:vercel": "node scripts/migrate-vercel-to-mixlyai.mjs"
   },
   "engines": {
     "node": ">=18"
