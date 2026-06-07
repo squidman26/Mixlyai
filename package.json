@@ -12,6 +12,7 @@
     "dev": "vercel dev",
     "deploy": "vercel --prod",
     "setup:production": "node scripts/setup-production.mjs",
+    "db:auth": "node scripts/apply-auth-schema.mjs",
     "check:accounts": "node scripts/check-accounts.mjs",
     "check:integration": "node scripts/check-accounts.mjs --production",
     "vercel:env": "node scripts/add-vercel-env.mjs"

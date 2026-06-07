@@ -1,5 +1,6 @@
 import {
   checkSupabaseAccountsTable,
+  checkSupabaseAuthSchema,
   checkSupabaseCreditSchema,
   isSupabaseConfigured,
 } from "../../lib/supabase.js";
@@ -21,13 +22,15 @@ export default async function handler(req, res) {
 
   const accountsResult = await checkSupabaseAccountsTable();
   const creditsResult = await checkSupabaseCreditSchema();
-  const ok = accountsResult.ok && creditsResult.ok;
+  const authResult = await checkSupabaseAuthSchema();
+  const ok = accountsResult.ok && creditsResult.ok && authResult.ok;
 
   json(res, ok ? 200 : 503, {
     ok,
     configured: true,
     accountsReady: accountsResult.ok,
     creditsReady: creditsResult.ok,
-    error: creditsResult.error ?? accountsResult.error ?? null,
+    authReady: authResult.ok,
+    error: authResult.error ?? creditsResult.error ?? accountsResult.error ?? null,
   });
 }
