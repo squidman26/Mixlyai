@@ -1,10 +1,4 @@
-import { chat } from "../src/claude.js";
-import { buildSystemPrompt } from "../src/prompt.js";
-import {
-  extractPlanFromMessage,
-  stripPlanBlock,
-  formatPlanSummary,
-} from "../src/plan.js";
+import { savePlaylist } from "../lib/accounts.js";
 import {
   getSession,
   json,
@@ -15,6 +9,17 @@ import {
 } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
 import { CREDIT_COSTS, deductCredits } from "../lib/credits.js";
+import { normalizePlan } from "../src/plan.js";
+
+function tracksToCsv(tracks) {
+  const header = "artist,title";
+  const rows = tracks.map((t) => {
+    const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
+    const title = `"${String(t.title).replace(/"/g, '""')}"`;
+    return `${artist},${title}`;
+  });
+  return [header, ...rows].join("\n");
+}
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "POST")) return;
@@ -25,15 +30,16 @@ export default async function handler(req, res) {
 
   try {
     const body = await readJsonBody(req);
-    const messages = body.messages;
-    if (!Array.isArray(messages)) {
-      json(res, 400, { error: "messages array required" });
+    if (!body.plan) {
+      json(res, 400, { error: "plan required" });
       return;
     }
 
+    const plan = normalizePlan(body.plan);
+
     const creditResult = await deductCredits(
       session.accountId,
-      CREDIT_COSTS.chatMessage,
+      CREDIT_COSTS.exportPlaylist,
       null
     );
     if (!creditResult.ok) {
@@ -41,24 +47,24 @@ export default async function handler(req, res) {
       return;
     }
 
-    const systemPrompt = buildSystemPrompt();
-    const reply = await chat(messages, systemPrompt);
-    const plan = extractPlanFromMessage(reply);
-    const visible = stripPlanBlock(reply);
+    const saved = await savePlaylist(session.accountId, plan);
 
     json(res, 200, {
-      reply: visible,
-      fullReply: reply,
-      plan: plan
+      saved: Boolean(saved),
+      playlist: saved
         ? {
-            ...plan,
-            summary: formatPlanSummary(plan),
+            id: saved.playlist_slug,
+            name: saved.name,
+            description: saved.description,
+            tracks: saved.track_count,
           }
         : null,
+      csv: tracksToCsv(plan.tracks),
+      json: plan.tracks,
       credits: creditResult.unlimited ? null : creditResult.credits,
       unlimitedCredits: creditResult.unlimited,
     });
   } catch (err) {
-    json(res, 500, { error: err.message || "Chat failed" });
+    json(res, 500, { error: err.message || "Export failed" });
   }
 }

@@ -20,44 +20,29 @@ export function stripPlanBlock(text) {
 }
 
 export function normalizePlan(plan) {
-  if (!plan.action || !["create", "edit"].includes(plan.action)) {
-    throw new Error('Plan must set action to "create" or "edit"');
+  if (!plan.playlist?.name) {
+    throw new Error("Plan must include playlist.name");
   }
   if (!Array.isArray(plan.tracks) || plan.tracks.length === 0) {
     throw new Error("Plan must include a non-empty tracks array");
   }
 
-  const normalized = {
-    action: plan.action,
-    playlist: plan.playlist ?? {},
+  return {
+    playlist: {
+      name: plan.playlist.name,
+      description: plan.playlist.description ?? "",
+    },
     tracks: plan.tracks,
     _rows: rowsFromTracks(plan.tracks),
   };
-
-  if (plan.action === "create" && !normalized.playlist.name) {
-    throw new Error('Create plan needs playlist.name');
-  }
-
-  return normalized;
 }
 
 export function formatPlanSummary(plan) {
   const lines = [];
-  lines.push(`Action: ${plan.action}`);
-
-  if (plan.action === "create") {
-    lines.push(`Name: ${plan.playlist.name}`);
-    if (plan.playlist.description) {
-      lines.push(`Description: ${plan.playlist.description}`);
-    }
-    lines.push(`Public: ${plan.playlist.public ? "yes" : "no"}`);
-  } else {
-    const ref = plan.playlist.url || plan.playlist.id || "(not set)";
-    lines.push(`Playlist: ${ref}`);
-    lines.push(`Mode: ${plan.playlist.mode || "sync"}`);
-    if (plan.playlist.name) lines.push(`Rename: ${plan.playlist.name}`);
+  lines.push(`Name: ${plan.playlist.name}`);
+  if (plan.playlist.description) {
+    lines.push(`Description: ${plan.playlist.description}`);
   }
-
   lines.push(`Tracks: ${plan.tracks.length}`);
   const preview = plan.tracks.slice(0, 8);
   for (const t of preview) {
@@ -66,6 +51,5 @@ export function formatPlanSummary(plan) {
   if (plan.tracks.length > 8) {
     lines.push(`  … and ${plan.tracks.length - 8} more`);
   }
-
   return lines.join("\n");
 }

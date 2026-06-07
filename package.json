@@ -1,15 +1,14 @@
 {
-  "name": "playlist-builder",
+  "name": "mixly",
   "version": "1.0.0",
-  "description": "Match artist/song CSV rows on Spotify and create a playlist",
+  "description": "AI playlist curator with Claude — chat, save, and export track lists",
   "type": "module",
   "bin": {
-    "playlist-builder": "./src/index.js"
+    "mixly": "./src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",
     "chat": "node src/index.js chat",
-    "auth": "node src/index.js auth",
     "dev": "vercel dev",
     "deploy": "vercel --prod",
     "setup:production": "node scripts/setup-production.mjs",
@@ -24,8 +23,7 @@
     "@supabase/supabase-js": "^2.107.0",
     "commander": "^13.1.0",
     "csv-parse": "^5.6.0",
-    "dotenv": "^16.4.7",
-    "open": "^10.1.0"
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "supabase": "^2.105.0"

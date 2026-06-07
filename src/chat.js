@@ -1,6 +1,5 @@
 import { createInterface } from "readline/promises";
 import { stdin as input, stdout as output } from "process";
-import { loadTokens } from "./config.js";
 import { chat } from "./claude.js";
 import { buildSystemPrompt } from "./prompt.js";
 import {
@@ -8,22 +7,21 @@ import {
   stripPlanBlock,
   formatPlanSummary,
 } from "./plan.js";
-import { applyPlan } from "./manager.js";
-import { getUserPlaylists } from "./spotify.js";
 
-async function loadPlaylistContext() {
-  if (!loadTokens()) return [];
-  try {
-    return await getUserPlaylists(30);
-  } catch {
-    return [];
-  }
+function tracksToCsv(tracks) {
+  const header = "artist,title";
+  const rows = tracks.map((t) => {
+    const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
+    const title = `"${String(t.title).replace(/"/g, '""')}"`;
+    return `${artist},${title}`;
+  });
+  return [header, ...rows].join("\n");
 }
 
-async function promptApply(rl, plan, { defaultAction } = {}) {
+async function promptExport(rl, plan, { defaultAction } = {}) {
   console.log("\n── Playlist ready ──");
   console.log(formatPlanSummary(plan));
-  console.log("\n[y] Apply to Spotify  [d] Dry run (match only)  [n] Keep chatting");
+  console.log("\n[e] Export CSV  [j] Show JSON  [n] Keep chatting");
 
   const raw = (await rl.question(defaultAction ? `> [${defaultAction}] ` : "> "))
     .trim()
@@ -35,47 +33,27 @@ async function promptApply(rl, plan, { defaultAction } = {}) {
     return { exit: false };
   }
 
-  if (!loadTokens()) {
-    console.error("\nNot logged in to Spotify. Run: npm run auth\n");
-    return { exit: false };
-  }
-
-  const opts = {
-    dryRun: answer === "d" || answer === "dry" || answer === "dry-run",
-    includeAmbiguous: false,
-  };
-
-  const includeAmbiguous = await rl.question(
-    "Include uncertain matches? [y/N] "
-  );
-  opts.includeAmbiguous = /^y/i.test(includeAmbiguous.trim());
-
-  try {
-    await applyPlan(plan, opts);
-    if (opts.dryRun) {
-      console.log(
-        "\nDry run finished. Type /apply to apply for real, or keep chatting.\n"
-      );
-      return { exit: false, plan };
-    }
-    return { exit: true, plan };
-  } catch (err) {
-    console.error(`\nSpotify error: ${err.message}\n`);
+  if (answer === "e" || answer === "export") {
+    console.log("\n" + tracksToCsv(plan.tracks) + "\n");
     return { exit: false, plan };
   }
+
+  if (answer === "j" || answer === "json") {
+    console.log("\n" + JSON.stringify(plan.tracks, null, 2) + "\n");
+    return { exit: false, plan };
+  }
+
+  return { exit: false, plan };
 }
 
 export async function runChat() {
   const rl = createInterface({ input, output });
 
-  console.log("Playlist Builder — chat mode");
-  console.log("Design a playlist with Claude, then apply it to Spotify.\n");
-  console.log(
-    "Commands: /quit  /apply (re-run last playlist — apply or dry run again)\n"
-  );
+  console.log("Mixly — chat mode");
+  console.log("Design a playlist with Claude, then export it.\n");
+  console.log("Commands: /quit  /export (re-export last playlist)\n");
 
-  const playlists = await loadPlaylistContext();
-  const systemPrompt = buildSystemPrompt({ playlists });
+  const systemPrompt = buildSystemPrompt();
 
   const messages = [];
   let lastAssistantText = "";
@@ -86,7 +64,7 @@ export async function runChat() {
       {
         role: "user",
         content:
-          "Start the session. Ask whether I want to create a new playlist or edit an existing one, and what vibe I'm going for.",
+          "Start the session. Ask what kind of playlist they want and what vibe they're going for.",
       },
     ],
     systemPrompt
@@ -98,11 +76,7 @@ export async function runChat() {
   const openingPlan = extractPlanFromMessage(opening);
   if (openingPlan) {
     lastPlan = openingPlan;
-    const { exit } = await promptApply(rl, openingPlan);
-    if (exit) {
-      rl.close();
-      return;
-    }
+    await promptExport(rl, openingPlan);
   }
 
   while (true) {
@@ -111,17 +85,15 @@ export async function runChat() {
     if (!line) continue;
     if (line === "/quit" || line === "/exit") break;
 
-    if (line === "/apply") {
-      const plan =
-        lastPlan ?? extractPlanFromMessage(lastAssistantText);
+    if (line === "/export") {
+      const plan = lastPlan ?? extractPlanFromMessage(lastAssistantText);
       if (!plan) {
         console.log(
-          "No saved playlist yet. Finish one with Claude first, then /apply.\n"
+          "No saved playlist yet. Finish one with Claude first, then /export.\n"
         );
         continue;
       }
-      const { exit } = await promptApply(rl, plan, { defaultAction: "y" });
-      if (exit) break;
+      await promptExport(rl, plan, { defaultAction: "e" });
       continue;
     }
 
@@ -137,8 +109,7 @@ export async function runChat() {
     const plan = extractPlanFromMessage(reply);
     if (plan) {
       lastPlan = plan;
-      const { exit } = await promptApply(rl, plan);
-      if (exit) break;
+      await promptExport(rl, plan);
       console.log("");
     } else {
       console.log("");

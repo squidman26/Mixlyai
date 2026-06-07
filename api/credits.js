@@ -34,11 +34,11 @@ async function getCreditsStatus(req, res) {
     return;
   }
 
-  account = await ensureAccountCredits(session.user, account);
+  account = await ensureAccountCredits(null, account);
   const transactions = await listCreditTransactions(session.accountId);
 
   json(res, 200, {
-    ...buildCreditStatus(account, session.user),
+    ...buildCreditStatus(account, null),
     squareConfigured: isSquareConfigured(),
     supabaseSynced: true,
     transactions,

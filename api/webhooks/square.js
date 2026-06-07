@@ -13,7 +13,9 @@ async function readRawBody(req) {
 }
 
 function parsePaymentNote(note) {
-  if (!note || !note.startsWith("spotifybot:")) return null;
+  if (!note || (!note.startsWith("mixly:") && !note.startsWith("spotifybot:"))) {
+    return null;
+  }
   const [, accountId, tierId] = note.split(":");
   if (!accountId || !tierId) return null;
   return { accountId, tierId };

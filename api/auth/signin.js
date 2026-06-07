@@ -29,7 +29,6 @@ export default async function handler(req, res) {
         email: session.email,
         accountId: session.accountId,
       },
-      spotifyConnected: Boolean(session.refresh_token),
     });
   } catch (err) {
     json(res, 400, { error: err.message || "Sign in failed" });
