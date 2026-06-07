@@ -59,6 +59,13 @@ export default async function handler(req, res) {
       unlimitedCredits: creditResult.unlimited,
     });
   } catch (err) {
-    json(res, 500, { error: err.message || "Chat failed" });
+    const message = err.message || "Chat failed";
+    if (/Missing env: ANTHROPIC_API_KEY/i.test(message)) {
+      json(res, 503, {
+        error: "Chat is not configured. Add ANTHROPIC_API_KEY in Vercel environment variables.",
+      });
+      return;
+    }
+    json(res, 500, { error: message });
   }
 }

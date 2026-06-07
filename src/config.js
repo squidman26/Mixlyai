@@ -7,8 +7,14 @@ export const projectRoot = join(__dirname, "..");
 
 loadDotenv({ path: join(projectRoot, ".env") });
 
-export function requireEnv(name) {
+export function trimEnv(name) {
   const value = process.env[name]?.trim();
+  if (value) process.env[name] = value;
+  return value;
+}
+
+export function requireEnv(name) {
+  const value = trimEnv(name);
   if (!value) throw new Error(`Missing env: ${name}`);
   return value;
 }
