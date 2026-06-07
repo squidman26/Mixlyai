@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -119,3 +120,65 @@ def search_tracks(
     tracks = data.get("collection") or []
     next_href = data.get("next_href") or None
     return tracks, next_href
+
+
+def get_related_artists(
+    user_urn: str,
+    access_token: str,
+    limit: int = 10,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Fetch related artist recommendations for a SoundCloud user.
+
+    Calls GET /users/{user_urn}/related with linked_partitioning=true.
+    Returns user objects from the first page and next_href when more pages exist.
+
+    Args:
+        user_urn: SoundCloud user URN (e.g. ``soundcloud:users:948745750``).
+        access_token: OAuth access token (client credentials or authorization code).
+        limit: Number of results per page (1–200; API default is 50).
+
+    Returns:
+        A tuple of (users, next_href). next_href is None when there are no more pages.
+
+    Raises:
+        SoundCloudUnauthorizedError: On HTTP 401.
+        SoundCloudRateLimitError: On HTTP 429.
+        SoundCloudAPIError: On other non-success HTTP status codes.
+    """
+    if not access_token:
+        raise SoundCloudUnauthorizedError(
+            401,
+            "Authentication failed. An access token is required.",
+        )
+
+    if not user_urn:
+        raise ValueError("user_urn is required")
+
+    if not 1 <= limit <= 200:
+        raise ValueError("limit must be between 1 and 200")
+
+    encoded_urn = quote(user_urn, safe="")
+
+    with httpx.Client(timeout=30.0) as client:
+        response = client.get(
+            f"{API_BASE}/users/{encoded_urn}/related",
+            params={
+                "limit": limit,
+                "linked_partitioning": "true",
+            },
+            headers={
+                "accept": "application/json; charset=utf-8",
+                "Authorization": f"OAuth {access_token}",
+            },
+        )
+
+    _raise_for_status(response)
+    data = response.json()
+
+    if isinstance(data, list):
+        return data, None
+
+    users = data.get("collection") or []
+    next_href = data.get("next_href") or None
+    return users, next_href
