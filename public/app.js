@@ -486,10 +486,14 @@ function renderConnectionsPanel(connections) {
 
 async function connectProvider(provider) {
   try {
-    await api("/api/connections", {
+    const data = await api("/api/connections", {
       method: "POST",
       body: JSON.stringify({ action: "connect", provider }),
     });
+    if (data.authorizeUrl) {
+      window.location.href = data.authorizeUrl;
+      return;
+    }
     showToast("Connected!");
     await loadConnections();
   } catch (err) {
@@ -653,9 +657,29 @@ authModal?.addEventListener("click", (e) => {
 });
 
 (async function init() {
-  if (new URLSearchParams(window.location.search).get("purchase") === "success") {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("purchase") === "success") {
     showToast("Purchase complete! Your credits are updating.");
     openCreditsPanel();
+  }
+
+  if (params.get("connections") === "soundcloud") {
+    const status = params.get("status");
+    const message = params.get("message");
+    if (status === "connected") {
+      showToast("SoundCloud connected!");
+      openConnectionsPanel();
+    } else if (status === "error") {
+      showToast(message || "SoundCloud connection failed", true);
+      openConnectionsPanel();
+    }
+    params.delete("connections");
+    params.delete("status");
+    params.delete("message");
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
+    window.history.replaceState({}, "", nextUrl);
   }
 
   app.classList.remove("hidden");
