@@ -66,6 +66,10 @@
         <span class="tool-icon">📋</span>
         My Playlists
       </button>
+      <button class="tool-btn" data-panel="credits" type="button">
+        <span class="tool-icon">⚡</span>
+        Credits
+      </button>
     </aside>
 
     <section class="panel active" id="panel-chat">
@@ -97,6 +101,16 @@
       </div>
       <div class="playlist-list" id="playlistList">
         <p class="muted">Connect Spotify to see playlists you create here.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-credits">
+      <div class="panel-head">
+        <h2>Credits & Plans</h2>
+        <button class="btn btn-ghost" id="refreshCredits" type="button">Refresh</button>
+      </div>
+      <div class="credits-panel" id="creditsPanel">
+        <p class="muted">Connect Spotify to view your credit balance.</p>
       </div>
     </section>
   </main>

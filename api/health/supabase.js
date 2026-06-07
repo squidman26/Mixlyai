@@ -1,4 +1,8 @@
-import { checkSupabaseAccountsTable, isSupabaseConfigured } from "../../lib/supabase.js";
+import {
+  checkSupabaseAccountsTable,
+  checkSupabaseCreditSchema,
+  isSupabaseConfigured,
+} from "../../lib/supabase.js";
 import { json, requireMethod } from "../../lib/api.js";
 
 export default async function handler(req, res) {
@@ -8,16 +12,22 @@ export default async function handler(req, res) {
     json(res, 503, {
       ok: false,
       configured: false,
+      creditsReady: false,
       error:
         "Add SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY to Vercel environment variables.",
     });
     return;
   }
 
-  const result = await checkSupabaseAccountsTable();
-  json(res, result.ok ? 200 : 503, {
-    ok: result.ok,
+  const accountsResult = await checkSupabaseAccountsTable();
+  const creditsResult = await checkSupabaseCreditSchema();
+  const ok = accountsResult.ok && creditsResult.ok;
+
+  json(res, ok ? 200 : 503, {
+    ok,
     configured: true,
-    error: result.error ?? null,
+    accountsReady: accountsResult.ok,
+    creditsReady: creditsResult.ok,
+    error: creditsResult.error ?? accountsResult.error ?? null,
   });
 }

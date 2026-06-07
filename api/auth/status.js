@@ -1,7 +1,9 @@
 import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
+import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { ensureValidSession } from "../../lib/spotify.js";
 import { getSession, json, requireMethod } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
+import { isSquareConfigured } from "../../lib/square.js";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "GET")) return;
@@ -21,9 +23,10 @@ export default async function handler(req, res) {
     }
 
     let supabaseError = null;
+    let account = null;
     if (valid.user?.id && (!valid.accountId || !valid.supabaseSyncedAt)) {
       try {
-        const account = await upsertAccountFromSpotifyUser(valid.user);
+        account = await upsertAccountFromSpotifyUser(valid.user);
         if (account?.id) {
           valid = {
             ...valid,
@@ -37,6 +40,18 @@ export default async function handler(req, res) {
       }
     }
 
+    if (valid.accountId) {
+      try {
+        if (!account) {
+          account = await getAccountCredits(valid.accountId);
+        }
+        account = await ensureAccountCredits(valid.user, account);
+      } catch (err) {
+        console.error("Credit sync failed:", err.message);
+        if (!supabaseError) supabaseError = err.message;
+      }
+    }
+
     save(valid);
     json(res, 200, {
       authenticated: true,
@@ -47,6 +62,8 @@ export default async function handler(req, res) {
         accountId: valid.accountId ?? null,
         lastLoginAt: valid.supabaseSyncedAt ?? null,
       },
+      credits: account ? buildCreditStatus(account, valid.user) : null,
+      squareConfigured: isSquareConfigured(),
       supabase: {
         synced: Boolean(valid.accountId && valid.supabaseSyncedAt),
         error: supabaseError,
