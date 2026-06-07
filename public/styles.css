@@ -168,6 +168,55 @@ body {
   display: flex;
 }
 
+#panel-chat {
+  min-height: 0;
+}
+
+.chat-shell {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.chat-shell.is-locked .chat,
+.chat-shell.is-locked .chat-input {
+  pointer-events: none;
+  user-select: none;
+}
+
+.chat-lock {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 10, 15, 0.92);
+  backdrop-filter: blur(6px);
+  border-radius: var(--radius);
+}
+
+.chat-lock.hidden {
+  display: none !important;
+}
+
+.chat-lock-card {
+  text-align: center;
+  max-width: 320px;
+  padding: 1.75rem 1.5rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.chat-lock-card p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+}
+
 .panel-head {
   display: flex;
   align-items: center;
