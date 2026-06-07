@@ -41,8 +41,7 @@ export function rowsFromTracks(tracks) {
   });
 }
 
-export function parseTrackCsv(filePath) {
-  const raw = readFileSync(filePath, "utf8");
+function parseCsvRecords(raw) {
   const records = parse(raw, {
     columns: true,
     skip_empty_lines: true,
@@ -78,4 +77,57 @@ export function parseTrackCsv(filePath) {
   }
 
   return rows;
+}
+
+export function parseTrackCsvText(raw) {
+  if (!raw?.trim()) {
+    throw new Error("CSV is empty");
+  }
+  return parseCsvRecords(raw);
+}
+
+export function parseTrackCsv(filePath) {
+  const raw = readFileSync(filePath, "utf8");
+  return parseCsvRecords(raw);
+}
+
+export function exportMatchedCsv(rows) {
+  const header = [
+    "line",
+    "artist",
+    "title",
+    "status",
+    "spotify_uri",
+    "spotify_url",
+    "matched_label",
+    "reason",
+  ];
+
+  const escape = (value) => {
+    const text = value == null ? "" : String(value);
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const lines = [header.join(",")];
+  for (const row of rows) {
+    lines.push(
+      [
+        row.line,
+        row.artist,
+        row.title,
+        row.status,
+        row.spotify_uri ?? "",
+        row.spotify_url ?? "",
+        row.matched_label ?? "",
+        row.reason ?? "",
+      ]
+        .map(escape)
+        .join(",")
+    );
+  }
+
+  return `${lines.join("\n")}\n`;
 }

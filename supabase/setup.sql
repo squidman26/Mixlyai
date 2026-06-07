@@ -3,7 +3,9 @@
 
 create table if not exists public.accounts (
   id uuid primary key default gen_random_uuid(),
-  spotify_id text not null unique,
+  spotify_id text unique,
+  username text,
+  password_hash text,
   display_name text,
   email text,
   avatar_url text,
@@ -30,6 +32,14 @@ create index if not exists idx_generated_playlists_account_id
 
 create index if not exists idx_accounts_spotify_id
   on public.accounts(spotify_id);
+
+create unique index if not exists idx_accounts_username_lower
+  on public.accounts (lower(username))
+  where username is not null;
+
+create unique index if not exists idx_accounts_email_lower
+  on public.accounts (lower(email))
+  where email is not null and password_hash is not null;
 
 alter table public.accounts enable row level security;
 alter table public.generated_playlists enable row level security;

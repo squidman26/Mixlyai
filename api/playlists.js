@@ -1,21 +1,25 @@
 import { listGeneratedPlaylists } from "../lib/accounts.js";
 import { getUserPlaylists } from "../lib/spotify.js";
 import { mergeGeneratedPlaylists } from "../lib/playlists.js";
-import { getSession, json, requireMethod } from "../lib/api.js";
+import { getSession, json, requireAppSession, requireMethod } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "GET")) return;
   if (!requireAccess(req, res)) return;
 
-  const { session, save } = getSession(req, res);
-  if (!session?.refresh_token) {
-    json(res, 401, { error: "Connect Spotify first" });
-    return;
-  }
+  const { session: initialSession, save } = getSession(req, res);
+  if (!requireAppSession(req, res, initialSession)) return;
 
   try {
-    const result = await getUserPlaylists(session, 50);
+    let session = initialSession;
+    let spotifyPlaylists = [];
+    if (session.refresh_token) {
+      const result = await getUserPlaylists(session, 50);
+      spotifyPlaylists = result.playlists;
+      session = result.session;
+    }
+
     let storedPlaylists = session.generatedPlaylists ?? [];
 
     if (session.accountId) {
@@ -26,14 +30,14 @@ export default async function handler(req, res) {
       }
     }
 
-    const playlists = mergeGeneratedPlaylists(storedPlaylists, result.playlists);
+    const playlists = mergeGeneratedPlaylists(storedPlaylists, spotifyPlaylists);
 
     save({
-      ...result.session,
+      ...session,
       generatedPlaylists: playlists,
     });
 
-    json(res, 200, { playlists });
+    json(res, 200, { playlists, spotifyConnected: Boolean(session.refresh_token) });
   } catch (err) {
     json(res, 500, { error: err.message || "Failed to load playlists" });
   }
