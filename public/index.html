@@ -53,8 +53,8 @@
         ⚡ Credits & Plans
       </button>
       <div class="auth-area" id="authArea">
-        <button class="btn btn-spotify" id="loginBtn" type="button">
-          Connect Spotify
+        <button class="btn btn-primary" id="openAuthBtn" type="button">
+          Sign in
         </button>
       </div>
     </div>
@@ -71,6 +71,10 @@
         <span class="tool-icon">📋</span>
         My Playlists
       </button>
+      <button class="tool-btn" data-panel="connections" type="button">
+        <span class="tool-icon">🔗</span>
+        Connections
+      </button>
       <button class="tool-btn" data-panel="credits" type="button">
         <span class="tool-icon">⚡</span>
         Credits
@@ -81,8 +85,9 @@
       <div class="chat-shell is-locked" id="chatShell">
         <div class="chat-lock" id="chatLock">
           <div class="chat-lock-card">
-            <p>Connect Spotify to chat with the playlist curator.</p>
-            <button class="btn btn-spotify" id="chatLockLoginBtn" type="button">Connect Spotify</button>
+            <p id="chatLockMessage">Sign in to chat with the playlist curator.</p>
+            <button class="btn btn-primary hidden" id="chatLockSignInBtn" type="button">Sign in or create account</button>
+            <button class="btn btn-spotify hidden" id="chatLockConnectBtn" type="button">Open Connections</button>
           </div>
         </div>
         <div class="chat" id="chatLog"></div>
@@ -105,7 +110,16 @@
         <button class="btn btn-ghost" id="refreshPlaylists" type="button">Refresh</button>
       </div>
       <div class="playlist-list" id="playlistList">
-        <p class="muted">Connect Spotify to see playlists you create here.</p>
+        <p class="muted">Sign in and connect Spotify to see playlists you create here.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-connections">
+      <div class="panel-head">
+        <h2>Connections</h2>
+      </div>
+      <div class="connections-panel" id="connectionsPanel">
+        <p class="muted">Sign in to manage your connected services.</p>
       </div>
     </section>
 
@@ -120,7 +134,7 @@
         >Pay with Square</a>
       </div>
       <div class="credits-panel" id="creditsPanel">
-        <p class="muted">Connect Spotify to view your credit balance.</p>
+        <p class="muted">Sign in to view your credit balance.</p>
       </div>
     </section>
   </main>
@@ -139,6 +153,30 @@
         <button class="btn btn-ghost" id="dismissPlan" type="button">Keep chatting</button>
       </div>
       <div class="apply-result hidden" id="applyResult"></div>
+    </div>
+  </div>
+
+  <div class="auth-modal hidden" id="authModal">
+    <div class="auth-card">
+      <button class="auth-close" id="closeAuthModal" type="button" aria-label="Close">×</button>
+      <h3 id="authModalTitle">Sign in</h3>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="authTabSignIn" type="button">Sign in</button>
+        <button class="auth-tab" id="authTabSignUp" type="button">Sign up</button>
+      </div>
+      <form class="auth-form" id="signInForm">
+        <input id="signInLogin" type="text" placeholder="Email or username" autocomplete="username" required />
+        <input id="signInPassword" type="password" placeholder="Password" autocomplete="current-password" required />
+        <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+        <p class="auth-error hidden" id="signInError"></p>
+      </form>
+      <form class="auth-form hidden" id="signUpForm">
+        <input id="signUpEmail" type="email" placeholder="Email" autocomplete="email" required />
+        <input id="signUpUsername" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="signUpPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required />
+        <button class="btn btn-primary auth-submit" type="submit">Create account</button>
+        <p class="auth-error hidden" id="signUpError"></p>
+      </form>
     </div>
   </div>
 

@@ -10,8 +10,8 @@ import {
   getSession,
   json,
   readJsonBody,
+  requireAppSession,
   requireMethod,
-  requireSpotifySession,
 } from "../lib/api.js";
 import { getBaseUrl } from "../lib/config.js";
 import { requireAccess } from "../lib/gate.js";
@@ -20,10 +20,7 @@ import { checkSupabaseCreditSchema } from "../lib/supabase.js";
 
 async function getCreditsStatus(req, res) {
   const { session } = getSession(req, res);
-  if (!session?.refresh_token || !session?.accountId) {
-    json(res, 401, { error: "Connect Spotify first" });
-    return;
-  }
+  if (!requireAppSession(req, res, session)) return;
 
   const schema = await checkSupabaseCreditSchema();
   if (!schema.ok) {
@@ -50,12 +47,7 @@ async function getCreditsStatus(req, res) {
 
 async function createCheckout(req, res) {
   const { session } = getSession(req, res);
-  if (!requireSpotifySession(req, res, session)) return;
-
-  if (!session.accountId) {
-    json(res, 400, { error: "Account not synced yet. Refresh and try again." });
-    return;
-  }
+  if (!requireAppSession(req, res, session)) return;
 
   if (!isSquareConfigured()) {
     json(res, 503, { error: "Square payments are not configured yet." });

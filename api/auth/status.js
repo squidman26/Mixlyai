@@ -1,5 +1,6 @@
-import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
+import { getAccountById } from "../../lib/accounts.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
+import { isAppAuthenticated, isSpotifyConnected } from "../../lib/app-auth.js";
 import { ensureValidSession } from "../../lib/spotify.js";
 import { getSession, json, requireMethod } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
@@ -10,66 +11,81 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
-  if (!session?.refresh_token) {
-    json(res, 200, { authenticated: false });
+  if (!isAppAuthenticated(session)) {
+    json(res, 200, { authenticated: false, spotifyConnected: false });
     return;
   }
 
   try {
-    let valid = await ensureValidSession(session);
-    if (!valid) {
-      json(res, 200, { authenticated: false });
+    let account = await getAccountById(session.accountId);
+    if (!account) {
+      json(res, 200, { authenticated: false, spotifyConnected: false });
       return;
     }
 
+    let valid = session;
     let supabaseError = null;
-    let account = null;
-    if (valid.user?.id && (!valid.accountId || !valid.supabaseSyncedAt)) {
+
+    if (isSpotifyConnected(session)) {
       try {
-        account = await upsertAccountFromSpotifyUser(valid.user);
-        if (account?.id) {
+        valid = await ensureValidSession(session);
+        if (!valid?.refresh_token) {
           valid = {
-            ...valid,
-            accountId: account.id,
-            supabaseSyncedAt: Date.now(),
+            accountId: session.accountId,
+            username: session.username,
+            email: session.email,
+            displayName: session.displayName || account.username,
           };
+        } else if (valid !== session) {
+          save(valid);
         }
       } catch (err) {
-        console.error("Supabase account sync failed:", err.message);
-        supabaseError = err.message;
+        console.error("Spotify session refresh failed:", err.message);
+        valid = {
+          accountId: session.accountId,
+          username: session.username,
+          email: session.email,
+          displayName: session.displayName || account.username,
+        };
       }
     }
 
     if (valid.accountId) {
       try {
-        if (!account) {
-          account = await getAccountCredits(valid.accountId);
+        account = await getAccountCredits(valid.accountId);
+        if (valid.user) {
+          account = await ensureAccountCredits(valid.user, account);
         }
-        account = await ensureAccountCredits(valid.user, account);
       } catch (err) {
         console.error("Credit sync failed:", err.message);
-        if (!supabaseError) supabaseError = err.message;
+        supabaseError = err.message;
       }
     }
 
-    save(valid);
     json(res, 200, {
       authenticated: true,
+      spotifyConnected: isSpotifyConnected(valid),
       user: {
-        name: valid.user?.display_name || "Spotify User",
-        id: valid.user?.id,
-        product: valid.user?.product,
-        accountId: valid.accountId ?? null,
-        lastLoginAt: valid.supabaseSyncedAt ?? null,
+        name: valid.displayName || valid.username || account?.display_name || "User",
+        username: valid.username || account?.username,
+        email: valid.email || account?.email,
+        accountId: valid.accountId,
+        product: valid.user?.product || account?.product,
       },
+      spotify: isSpotifyConnected(valid)
+        ? {
+            name: valid.user?.display_name || account?.display_name,
+            product: valid.user?.product || account?.product,
+          }
+        : null,
       credits: account ? buildCreditStatus(account, valid.user) : null,
       squareConfigured: isSquareConfigured(),
       supabase: {
-        synced: Boolean(valid.accountId && valid.supabaseSyncedAt),
+        synced: Boolean(valid.accountId),
         error: supabaseError,
       },
     });
   } catch {
-    json(res, 200, { authenticated: false });
+    json(res, 200, { authenticated: false, spotifyConnected: false });
   }
 }

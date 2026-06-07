@@ -2,7 +2,20 @@ const chatLog = document.getElementById("chatLog");
 const chatForm = document.getElementById("chatForm");
 const chatMessage = document.getElementById("chatMessage");
 const authArea = document.getElementById("authArea");
-const loginBtn = document.getElementById("loginBtn");
+const openAuthBtn = document.getElementById("openAuthBtn");
+const authModal = document.getElementById("authModal");
+const closeAuthModal = document.getElementById("closeAuthModal");
+const authTabSignIn = document.getElementById("authTabSignIn");
+const authTabSignUp = document.getElementById("authTabSignUp");
+const signInForm = document.getElementById("signInForm");
+const signUpForm = document.getElementById("signUpForm");
+const signInLogin = document.getElementById("signInLogin");
+const signInPassword = document.getElementById("signInPassword");
+const signInError = document.getElementById("signInError");
+const signUpEmail = document.getElementById("signUpEmail");
+const signUpUsername = document.getElementById("signUpUsername");
+const signUpPassword = document.getElementById("signUpPassword");
+const signUpError = document.getElementById("signUpError");
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const applyBtn = document.getElementById("applyBtn");
@@ -21,7 +34,10 @@ const gateCode = document.getElementById("gateCode");
 const gateError = document.getElementById("gateError");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
-const chatLockLoginBtn = document.getElementById("chatLockLoginBtn");
+const chatLockMessage = document.getElementById("chatLockMessage");
+const chatLockSignInBtn = document.getElementById("chatLockSignInBtn");
+const chatLockConnectBtn = document.getElementById("chatLockConnectBtn");
+const connectionsPanel = document.getElementById("connectionsPanel");
 const headerCreditsBtn = document.getElementById("headerCreditsBtn");
 const authNotice = document.getElementById("authNotice");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
@@ -29,6 +45,7 @@ const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 let messages = [];
 let currentPlan = null;
 let authenticated = false;
+let spotifyConnected = false;
 let chatStarted = false;
 let canonicalBaseUrl = null;
 let creditStatus = null;
@@ -56,6 +73,44 @@ function spotifyLoginUrl() {
 
 function goToSpotifyLogin() {
   window.location.href = spotifyLoginUrl();
+}
+
+function hideAllowlistHelp() {}
+
+function showAllowlistHelp() {}
+
+function isAllowlistAuthError(code) {
+  return (
+    code === "spotify_not_allowlisted" ||
+    /spotify_not_allowlisted|not registered|not approved/i.test(code)
+  );
+}
+
+function openAuthModal(mode = "signin") {
+  authModal.classList.remove("hidden");
+  showAuthTab(mode);
+}
+
+function closeAuthModalPanel() {
+  authModal.classList.add("hidden");
+  signInError.classList.add("hidden");
+  signUpError.classList.add("hidden");
+}
+
+function showAuthTab(mode) {
+  const isSignIn = mode === "signin";
+  authTabSignIn.classList.toggle("active", isSignIn);
+  authTabSignUp.classList.toggle("active", !isSignIn);
+  signInForm.classList.toggle("hidden", !isSignIn);
+  signUpForm.classList.toggle("hidden", isSignIn);
+  document.getElementById("authModalTitle").textContent = isSignIn
+    ? "Sign in"
+    : "Create account";
+}
+
+function openConnectionsPanel() {
+  const connectionsBtn = document.querySelector('.tool-btn[data-panel="connections"]');
+  connectionsBtn?.click();
 }
 
 function showToast(text, isError = false) {
@@ -118,8 +173,8 @@ function renderAuth(user, credits) {
     document.getElementById("logoutBtn").addEventListener("click", logout);
     document.getElementById("creditBadgeBtn")?.addEventListener("click", openCreditsPanel);
   } else {
-    authArea.innerHTML = `<button class="btn btn-spotify" id="loginBtn" type="button">Connect Spotify</button>`;
-    document.getElementById("loginBtn").addEventListener("click", goToSpotifyLogin);
+    authArea.innerHTML = `<button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>`;
+    document.getElementById("openAuthBtn").addEventListener("click", () => openAuthModal("signin"));
   }
 }
 
@@ -133,22 +188,26 @@ async function checkAuth() {
   try {
     const data = await api("/api/auth/status");
     authenticated = data.authenticated;
+    spotifyConnected = Boolean(data.spotifyConnected);
     creditStatus = data.credits ?? null;
     currentUser = data.authenticated ? data.user : null;
     renderAuth(currentUser, creditStatus);
+    updateChatLock();
     return data.authenticated;
   } catch {
     authenticated = false;
+    spotifyConnected = false;
     creditStatus = null;
     currentUser = null;
     renderAuth(null, null);
+    updateChatLock();
     return false;
   }
 }
 
 async function loadCredits() {
   if (!authenticated) {
-    creditsPanel.innerHTML = '<p class="muted">Connect Spotify to view your credit balance.</p>';
+    creditsPanel.innerHTML = '<p class="muted">Sign in to view your credit balance.</p>';
     return;
   }
 
@@ -264,7 +323,9 @@ async function logout() {
     /* still lock locally if the server request fails */
   }
   authenticated = false;
+  spotifyConnected = false;
   creditStatus = null;
+  currentUser = null;
   renderAuth(null, null);
   lockChat();
   showToast("Logged out");
@@ -290,8 +351,29 @@ async function unlockAndStartChat() {
   await startChat();
 }
 
+function updateChatLock() {
+  if (!authenticated) {
+    chatLockMessage.textContent = "Sign in to chat with the playlist curator.";
+    chatLockSignInBtn.classList.remove("hidden");
+    chatLockConnectBtn.classList.add("hidden");
+    return;
+  }
+
+  if (!spotifyConnected) {
+    chatLockMessage.textContent =
+      "Connect Spotify in Connections to chat with the playlist curator.";
+    chatLockSignInBtn.classList.add("hidden");
+    chatLockConnectBtn.classList.remove("hidden");
+    return;
+  }
+
+  chatLockSignInBtn.classList.add("hidden");
+  chatLockConnectBtn.classList.add("hidden");
+}
+
 async function syncChatWithAuth(isAuthed) {
-  if (isAuthed) {
+  updateChatLock();
+  if (isAuthed && spotifyConnected) {
     await unlockAndStartChat();
   } else {
     lockChat();
@@ -323,10 +405,10 @@ async function startChat() {
     updateCreditsFromResponse(data);
   } catch (err) {
     if (/connect spotify/i.test(err.message)) {
-      authenticated = false;
+      spotifyConnected = false;
       chatStarted = false;
       lockChat();
-      renderAuth(null, null);
+      updateChatLock();
       showToast(err.message, true);
       return;
     }
@@ -341,7 +423,13 @@ async function startChat() {
 
 async function sendMessage(text) {
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showToast("Sign in first", true);
+    openAuthModal("signin");
+    return;
+  }
+  if (!spotifyConnected) {
+    showToast("Connect Spotify in Connections first", true);
+    openConnectionsPanel();
     return;
   }
 
@@ -360,9 +448,9 @@ async function sendMessage(text) {
     updateCreditsFromResponse(data);
   } catch (err) {
     if (/connect spotify/i.test(err.message)) {
-      authenticated = false;
+      spotifyConnected = false;
       lockChat();
-      renderAuth(null, null);
+      updateChatLock();
       showToast(err.message, true);
       return;
     }
@@ -385,7 +473,11 @@ function showPlan(plan) {
 
 async function runApply(dryRun) {
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showToast("Sign in first", true);
+    return;
+  }
+  if (!spotifyConnected) {
+    showToast("Connect Spotify in Connections first", true);
     return;
   }
   if (!currentPlan) return;
@@ -441,7 +533,13 @@ async function runApply(dryRun) {
 
 async function loadPlaylists() {
   if (!authenticated) {
-    playlistList.innerHTML = '<p class="muted">Connect Spotify to see your playlists.</p>';
+    playlistList.innerHTML =
+      '<p class="muted">Sign in to see your playlists.</p>';
+    return;
+  }
+  if (!spotifyConnected) {
+    playlistList.innerHTML =
+      '<p class="muted">Connect Spotify in Connections to see your playlists.</p>';
     return;
   }
 
@@ -468,6 +566,129 @@ async function loadPlaylists() {
   }
 }
 
+async function loadConnections() {
+  if (!authenticated) {
+    connectionsPanel.innerHTML =
+      '<p class="muted">Sign in to manage your connected services.</p>';
+    return;
+  }
+
+  connectionsPanel.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const data = await api("/api/connections");
+    renderConnectionsPanel(data.connections || []);
+  } catch (err) {
+    connectionsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderConnectionsPanel(connections) {
+  const spotify = connections.find((c) => c.provider === "spotify") || {
+    provider: "spotify",
+    connected: false,
+  };
+
+  const status = spotify.connected
+    ? `<span class="connection-status connected">Connected${spotify.name ? ` as ${escapeHtml(spotify.name)}` : ""}${spotify.product === "premium" ? ' <span class="badge">Premium</span>' : ""}</span>`
+    : '<span class="connection-status">Not connected</span>';
+
+  const action = spotify.connected
+    ? `<button class="btn btn-ghost" id="disconnectSpotifyBtn" type="button">Disconnect</button>`
+    : `<button class="btn btn-spotify" id="connectSpotifyBtn" type="button">Connect Spotify</button>`;
+
+  connectionsPanel.innerHTML = `
+    <div class="connection-card">
+      <div class="connection-head">
+        <div class="connection-icon" aria-hidden="true">🎵</div>
+        <div>
+          <h3>Spotify</h3>
+          <p class="muted">Required for playlist curation and applying tracks.</p>
+        </div>
+      </div>
+      <div class="connection-body">
+        ${status}
+        ${action}
+      </div>
+    </div>`;
+
+  document
+    .getElementById("connectSpotifyBtn")
+    ?.addEventListener("click", goToSpotifyLogin);
+  document
+    .getElementById("disconnectSpotifyBtn")
+    ?.addEventListener("click", disconnectSpotify);
+}
+
+async function disconnectSpotify() {
+  try {
+    await api("/api/connections", {
+      method: "POST",
+      body: JSON.stringify({ action: "disconnect", provider: "spotify" }),
+    });
+    spotifyConnected = false;
+    lockChat();
+    updateChatLock();
+    showToast("Spotify disconnected");
+    await loadConnections();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function handleSignIn(e) {
+  e.preventDefault();
+  signInError.classList.add("hidden");
+
+  try {
+    const data = await api("/api/auth/signin", {
+      method: "POST",
+      body: JSON.stringify({
+        login: signInLogin.value.trim(),
+        password: signInPassword.value,
+      }),
+    });
+    authenticated = true;
+    spotifyConnected = Boolean(data.spotifyConnected);
+    currentUser = data.user;
+    closeAuthModalPanel();
+    signInForm.reset();
+    await checkAuth();
+    await syncChatWithAuth(authenticated);
+    showToast("Signed in");
+  } catch (err) {
+    signInError.textContent = err.message;
+    signInError.classList.remove("hidden");
+  }
+}
+
+async function handleSignUp(e) {
+  e.preventDefault();
+  signUpError.classList.add("hidden");
+
+  try {
+    const data = await api("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({
+        email: signUpEmail.value.trim(),
+        username: signUpUsername.value.trim(),
+        password: signUpPassword.value,
+      }),
+    });
+    authenticated = true;
+    spotifyConnected = false;
+    currentUser = data.user;
+    closeAuthModalPanel();
+    signUpForm.reset();
+    await checkAuth();
+    await syncChatWithAuth(authenticated);
+    showToast("Account created");
+    openConnectionsPanel();
+  } catch (err) {
+    signUpError.textContent = err.message;
+    signUpError.classList.remove("hidden");
+  }
+}
+
 document.querySelectorAll(".tool-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tool-btn").forEach((b) => b.classList.remove("active"));
@@ -475,6 +696,7 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
     btn.classList.add("active");
     document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
     if (btn.dataset.panel === "playlists") loadPlaylists();
+    if (btn.dataset.panel === "connections") loadConnections();
     if (btn.dataset.panel === "credits") loadCredits();
   });
 });
@@ -482,7 +704,13 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showToast("Sign in first", true);
+    openAuthModal("signin");
+    return;
+  }
+  if (!spotifyConnected) {
+    showToast("Connect Spotify in Connections first", true);
+    openConnectionsPanel();
     return;
   }
   const text = chatMessage.value.trim();
@@ -498,14 +726,25 @@ refreshPlaylists.addEventListener("click", loadPlaylists);
 
 headerCreditsBtn?.addEventListener("click", () => {
   if (!authenticated) {
-    showToast("Connect Spotify first to view credits", true);
+    showToast("Sign in to view credits", true);
+    openAuthModal("signin");
     return;
   }
   openCreditsPanel();
 });
 
-loginBtn?.addEventListener("click", goToSpotifyLogin);
-chatLockLoginBtn?.addEventListener("click", goToSpotifyLogin);
+openAuthBtn?.addEventListener("click", () => openAuthModal("signin"));
+closeAuthModal?.addEventListener("click", closeAuthModalPanel);
+authTabSignIn?.addEventListener("click", () => showAuthTab("signin"));
+authTabSignUp?.addEventListener("click", () => showAuthTab("signup"));
+signInForm?.addEventListener("submit", handleSignIn);
+signUpForm?.addEventListener("submit", handleSignUp);
+chatLockSignInBtn?.addEventListener("click", () => openAuthModal("signin"));
+chatLockConnectBtn?.addEventListener("click", openConnectionsPanel);
+
+authModal?.addEventListener("click", (e) => {
+  if (e.target === authModal) closeAuthModalPanel();
+});
 
 function showApp() {
   gate.classList.add("hidden");
@@ -568,9 +807,9 @@ gateForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (params.get("auth") === "success") {
-    hideAllowlistHelp();
-    showToast("Spotify connected!");
+  if (params.get("auth_error") === "sign_in_first") {
+    showToast("Sign in before connecting Spotify", true);
+    openAuthModal("signin");
   }
   if (params.get("purchase") === "success") {
     showToast(`Purchase complete! Your credits are updating.`);
@@ -579,7 +818,7 @@ gateForm.addEventListener("submit", async (e) => {
   if (params.get("supabase_error")) {
     showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
   }
-  if (params.get("auth_error")) {
+  if (params.get("auth_error") && params.get("auth_error") !== "sign_in_first") {
     const authError = params.get("auth_error");
     showToast(formatAuthError(authError), true);
     if (isAllowlistAuthError(authError)) showAllowlistHelp();
@@ -596,6 +835,12 @@ gateForm.addEventListener("submit", async (e) => {
       history.replaceState({}, "", window.location.pathname);
     }
     await checkAuth();
+    if (params.get("auth") === "success") {
+      hideAllowlistHelp();
+      showToast("Spotify connected!");
+      openConnectionsPanel();
+      await loadConnections();
+    }
     await syncChatWithAuth(authenticated);
     return;
   }
@@ -615,7 +860,7 @@ gateForm.addEventListener("submit", async (e) => {
   if (!unlocked) return;
 
   if (isPreviewHost() && canonicalBaseUrl) {
-    showToast("Spotify login uses the production site.", false);
+    showToast("Spotify connections use the production site.", false);
   }
 
   await checkAuth();

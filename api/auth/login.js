@@ -1,17 +1,32 @@
 import {
   SCOPES,
+  getBaseUrl,
   getCanonicalBaseUrl,
   isPreviewDeployment,
   loadSpotifyConfig,
 } from "../../lib/config.js";
-import { createOAuthState, setStateCookie } from "../../lib/session.js";
-import { redirect } from "../../lib/api.js";
+import { isAppAuthenticated } from "../../lib/app-auth.js";
+import {
+  createOAuthState,
+  setOAuthAccountCookie,
+  setStateCookie,
+} from "../../lib/session.js";
+import { getSession, redirect } from "../../lib/api.js";
+import { requireAccess } from "../../lib/gate.js";
 
 const AUTH_URL = "https://accounts.spotify.com/authorize";
 
 export default function handler(req, res) {
+  if (!requireAccess(req, res)) return;
+
   if (isPreviewDeployment(req)) {
     redirect(res, `${getCanonicalBaseUrl()}/api/auth/login`);
+    return;
+  }
+
+  const { session } = getSession(req, res);
+  if (!isAppAuthenticated(session)) {
+    redirect(res, `${getBaseUrl(req)}/?auth_error=sign_in_first`);
     return;
   }
 
@@ -29,6 +44,7 @@ export default function handler(req, res) {
 
   const { state, nonce } = createOAuthState();
   setStateCookie(res, nonce);
+  setOAuthAccountCookie(res, session.accountId);
 
   const params = new URLSearchParams({
     client_id: config.clientId,

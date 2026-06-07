@@ -1,10 +1,13 @@
-import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
 import { ensureAccountCredits } from "../../lib/credits.js";
+import { attachSpotifyToSession } from "../../lib/app-auth.js";
 import { getBaseUrl, getRedirectUri } from "../../lib/config.js";
 import { exchangeCode } from "../../lib/spotify.js";
 import {
+  clearOAuthAccountCookie,
   clearStateCookie,
+  readOAuthAccountCookie,
   readOAuthState,
+  readSession,
   setSessionCookie,
   verifyOAuthState,
 } from "../../lib/session.js";
@@ -38,17 +41,34 @@ export default async function handler(req, res) {
     return;
   }
 
+  const accountId = readOAuthAccountCookie(req);
+  const appSession = readSession(req);
+
+  if (!accountId || appSession?.accountId !== accountId) {
+    clearOAuthAccountCookie(res);
+    clearStateCookie(res);
+    redirect(res, `${getBaseUrl(req)}/?auth_error=sign_in_first`);
+    return;
+  }
+
   try {
     const redirectUri = getRedirectUri(req);
-    const session = await exchangeCode(code, redirectUri);
+    const spotifySession = await exchangeCode(code, redirectUri);
+    let session = await attachSpotifyToSession(appSession, spotifySession);
 
     let supabaseWarning = null;
     try {
-      let account = await upsertAccountFromSpotifyUser(session.user);
-      if (account?.id) {
-        account = await ensureAccountCredits(session.user, account);
-        session.accountId = account.id;
-        session.supabaseSyncedAt = Date.now();
+      if (session.accountId) {
+        const account = await ensureAccountCredits(session.user, {
+          id: session.accountId,
+        });
+        if (account?.id) {
+          session = {
+            ...session,
+            accountId: account.id,
+            supabaseSyncedAt: Date.now(),
+          };
+        }
       }
     } catch (err) {
       console.error("Supabase account sync failed:", err.message);
@@ -57,6 +77,7 @@ export default async function handler(req, res) {
 
     setSessionCookie(res, session);
     clearStateCookie(res);
+    clearOAuthAccountCookie(res);
 
     const params = new URLSearchParams({ auth: "success" });
     if (supabaseWarning) {
@@ -64,6 +85,8 @@ export default async function handler(req, res) {
     }
     redirect(res, `${getBaseUrl(req)}/?${params}`);
   } catch (err) {
+    clearOAuthAccountCookie(res);
+    clearStateCookie(res);
     redirect(
       res,
       `${getBaseUrl(req)}/?auth_error=${encodeURIComponent(err.message)}`

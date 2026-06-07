@@ -1,7 +1,7 @@
 import { listGeneratedPlaylists } from "../lib/accounts.js";
 import { getUserPlaylists } from "../lib/spotify.js";
 import { mergeGeneratedPlaylists } from "../lib/playlists.js";
-import { getSession, json, requireMethod } from "../lib/api.js";
+import { getSession, json, requireMethod, requireSpotifySession } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
 
 export default async function handler(req, res) {
@@ -9,10 +9,7 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
-  if (!session?.refresh_token) {
-    json(res, 401, { error: "Connect Spotify first" });
-    return;
-  }
+  if (!requireSpotifySession(req, res, session)) return;
 
   try {
     const result = await getUserPlaylists(session, 50);
