@@ -45,6 +45,20 @@ In GitHub → Settings → Secrets → Actions, add:
 
 This lets the integration workflow list logged-in accounts after each deploy.
 
+### 4. Allow Spotify users to sign in
+
+Spotify apps start in **Development Mode**. Only the app owner plus up to **5 allowlisted users** can use the API. Anyone else gets a 403: *User is not registered for this application*.
+
+To allow a specific person (e.g. a second Spotify account):
+
+1. Open [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Select the Spotifybot app
+3. Go to **Settings** → **Users and Access**
+4. Click **Add new user** and enter their **Spotify account email**
+5. Wait up to 15 minutes, then connect again
+
+For **any** Spotify user to sign in, apply for **Extended Quota Mode** in the dashboard.
+
 ## Vercel ↔ GitHub connection
 
 If deploys stop triggering:

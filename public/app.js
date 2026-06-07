@@ -61,7 +61,19 @@ function showToast(text, isError = false) {
   toast.textContent = text;
   toast.classList.toggle("error", isError);
   toast.classList.remove("hidden");
-  setTimeout(() => toast.classList.add("hidden"), 4000);
+  setTimeout(() => toast.classList.add("hidden"), isError ? 12000 : 4000);
+}
+
+function formatAuthError(code) {
+  if (code === "spotify_not_allowlisted") {
+    return (
+      "This Spotify account is not allowlisted for the app. Add its email in Spotify Developer Dashboard → Users & Access, or apply for Extended Quota Mode."
+    );
+  }
+  if (/spotify_not_allowlisted|not registered|not approved/i.test(code)) {
+    return formatAuthError("spotify_not_allowlisted");
+  }
+  return `Auth failed: ${code}`;
 }
 
 function addMessage(role, text) {
@@ -564,7 +576,7 @@ gateForm.addEventListener("submit", async (e) => {
     showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
   }
   if (params.get("auth_error")) {
-    showToast(`Auth failed: ${params.get("auth_error")}`, true);
+    showToast(formatAuthError(params.get("auth_error")), true);
   }
 
   if (isOAuthReturn) {

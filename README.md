@@ -29,6 +29,7 @@ npm run check:accounts      # list Supabase logins (needs SUPABASE_SECRET_KEY)
    `https://spotifybot-eight.vercel.app/api/auth/callback`
    Preview deployments redirect Spotify login to production (preview URLs cannot be registered in Spotify).
 4. Set `APP_BASE_URL` and `SPOTIFY_REDIRECT_URI` in Vercel to your production URL.
+5. In [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) → your app → **Users and Access**, add each tester’s Spotify email (Development Mode allows up to 5 users). For public access, apply for **Extended Quota Mode**.
 
 ## Local development
 
