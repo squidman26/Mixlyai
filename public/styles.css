@@ -9,6 +9,10 @@
   --accent-green-hover: #4ade80;
   --accent: #7c5cff;
   --accent-2: #ff6b9d;
+  --youtube: #ff0033;
+  --youtube-hover: #ff3355;
+  --soundcloud: #ff5500;
+  --soundcloud-hover: #ff7733;
   --radius: 14px;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }
@@ -795,6 +799,24 @@ body {
 
 .coming-soon {
   font-size: 0.85rem;
+}
+
+.btn-youtube {
+  background: var(--youtube);
+  color: #fff;
+}
+
+.btn-youtube:hover {
+  background: var(--youtube-hover);
+}
+
+.btn-soundcloud {
+  background: var(--soundcloud);
+  color: #fff;
+}
+
+.btn-soundcloud:hover {
+  background: var(--soundcloud-hover);
 }
 
 @media (max-width: 768px) {

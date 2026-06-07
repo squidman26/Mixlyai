@@ -30,7 +30,6 @@ const toast = document.getElementById("toast");
 const app = document.getElementById("app");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
-const chatLockSignInBtn = document.getElementById("chatLockSignInBtn");
 const headerCreditsBtn = document.getElementById("headerCreditsBtn");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
@@ -38,9 +37,14 @@ let messages = [];
 let currentPlan = null;
 let lastExportCsv = "";
 let authenticated = false;
+let hasConnectedService = false;
 let chatStarted = false;
 let creditStatus = null;
 let currentUser = null;
+
+function canUseChat() {
+  return authenticated && hasConnectedService;
+}
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -121,6 +125,7 @@ async function checkAuth() {
   try {
     const data = await api("/api/auth/status");
     authenticated = data.authenticated;
+    hasConnectedService = Boolean(data.hasConnectedService);
     creditStatus = data.credits ?? null;
     currentUser = data.authenticated ? data.user : null;
     renderAuth(currentUser, creditStatus);
@@ -128,6 +133,7 @@ async function checkAuth() {
     return data.authenticated;
   } catch {
     authenticated = false;
+    hasConnectedService = false;
     creditStatus = null;
     currentUser = null;
     renderAuth(null, null);
@@ -136,11 +142,32 @@ async function checkAuth() {
   }
 }
 
+function renderChatLockMessage() {
+  const card = chatLock.querySelector(".chat-lock-card");
+  if (!card) return;
+
+  if (!authenticated) {
+    card.innerHTML = `
+      <p>Sign in to chat with the playlist curator.</p>
+      <button class="btn btn-primary" id="chatLockSignInBtn" type="button">Sign in or create account</button>`;
+    document.getElementById("chatLockSignInBtn")?.addEventListener("click", () =>
+      openAuthModal("signin")
+    );
+    return;
+  }
+
+  card.innerHTML = `
+    <p>Connect YouTube Music or SoundCloud to unlock the chat curator.</p>
+    <button class="btn btn-primary" id="chatLockConnectBtn" type="button">Connect a service</button>`;
+  document.getElementById("chatLockConnectBtn")?.addEventListener("click", openConnectionsPanel);
+}
+
 function updateChatLock() {
-  if (authenticated) {
+  if (canUseChat()) {
     chatLock.classList.add("hidden");
   } else {
     chatLock.classList.remove("hidden");
+    renderChatLockMessage();
   }
 }
 
@@ -259,6 +286,7 @@ async function logout() {
     /* still lock locally */
   }
   authenticated = false;
+  hasConnectedService = false;
   creditStatus = null;
   currentUser = null;
   renderAuth(null, null);
@@ -287,7 +315,7 @@ async function unlockAndStartChat() {
 }
 
 async function syncChatWithAuth(isAuthed) {
-  if (isAuthed) {
+  if (canUseChat()) {
     await unlockAndStartChat();
   } else {
     lockChat();
@@ -330,6 +358,14 @@ async function startChat() {
       chatStarted = false;
       return;
     }
+    if (/connect.*music service/i.test(err.message)) {
+      hasConnectedService = false;
+      updateChatLock();
+      lockChat();
+      showToast(err.message, true);
+      openConnectionsPanel();
+      return;
+    }
     chatLog.querySelector(".msg.system")?.remove();
     addMessage("system", `Error: ${err.message}`);
   }
@@ -339,6 +375,11 @@ async function sendMessage(text) {
   if (!authenticated) {
     showToast("Sign in first", true);
     openAuthModal("signin");
+    return;
+  }
+  if (!hasConnectedService) {
+    showToast("Connect a music service first", true);
+    openConnectionsPanel();
     return;
   }
 
@@ -357,9 +398,17 @@ async function sendMessage(text) {
     updateCreditsFromResponse(data);
   } catch (err) {
     if (handleInsufficientCredits(err)) return;
+    if (/connect.*music service/i.test(err.message)) {
+      hasConnectedService = false;
+      updateChatLock();
+      lockChat();
+      showToast(err.message, true);
+      openConnectionsPanel();
+      return;
+    }
     addMessage("system", `Error: ${err.message}`);
   } finally {
-    if (authenticated) {
+    if (canUseChat()) {
       chatMessage.disabled = false;
       chatMessage.focus();
     }
@@ -374,7 +423,7 @@ function showPlan(plan) {
 }
 
 async function runExport() {
-  if (!authenticated || !currentPlan) return;
+  if (!canUseChat() || !currentPlan) return;
 
   exportBtn.disabled = true;
   copyCsvBtn.disabled = true;
@@ -397,6 +446,12 @@ async function runExport() {
     updateCreditsFromResponse(data);
   } catch (err) {
     if (handleInsufficientCredits(err)) return;
+    if (/connect.*music service/i.test(err.message)) {
+      hasConnectedService = false;
+      updateChatLock();
+      lockChat();
+      openConnectionsPanel();
+    }
     showToast(err.message, true);
   } finally {
     exportBtn.disabled = false;
@@ -425,6 +480,11 @@ async function copyCsv() {
   }
 }
 
+function setConnectionState(connections) {
+  hasConnectedService = connections.some((connection) => connection.connected);
+  updateChatLock();
+}
+
 async function loadConnections() {
   if (!authenticated) {
     connectionsPanel.innerHTML =
@@ -435,7 +495,10 @@ async function loadConnections() {
   connectionsPanel.innerHTML = '<p class="muted">Loading…</p>';
   try {
     const data = await api("/api/connections");
-    renderConnectionsPanel(data.connections || []);
+    const connections = data.connections || [];
+    setConnectionState(connections);
+    renderConnectionsPanel(connections);
+    await syncChatWithAuth(authenticated);
   } catch (err) {
     connectionsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
   }
@@ -448,10 +511,17 @@ function renderConnectionsPanel(connections) {
         ? `<span class="connection-status connected">Connected${connection.displayName ? ` as ${escapeHtml(connection.displayName)}` : ""}</span>`
         : '<span class="connection-status">Not connected</span>';
 
+      const connectClass =
+        connection.provider === "youtube"
+          ? "btn btn-youtube"
+          : connection.provider === "soundcloud"
+            ? "btn btn-soundcloud"
+            : "btn btn-primary";
+
       const action = connection.connected
         ? `<button class="btn btn-ghost disconnect-btn" data-provider="${connection.provider}" type="button">Disconnect</button>`
         : connection.available
-          ? `<button class="btn btn-primary connect-btn" data-provider="${connection.provider}" type="button">Connect</button>`
+          ? `<button class="${connectClass} connect-btn" data-provider="${connection.provider}" type="button">Connect</button>`
           : `<span class="muted coming-soon">Coming soon</span>`;
 
       return `
@@ -472,7 +542,7 @@ function renderConnectionsPanel(connections) {
     .join("");
 
   connectionsPanel.innerHTML = `
-    <p class="connections-intro muted">Link a music service to apply playlists directly from Mixly. Export still works without connections.</p>
+    <p class="connections-intro muted">Link a music service to unlock chat and apply playlists from Mixly.</p>
     <div class="connections-list">${cards}</div>`;
 
   connectionsPanel.querySelectorAll(".connect-btn").forEach((btn) => {
@@ -486,12 +556,15 @@ function renderConnectionsPanel(connections) {
 
 async function connectProvider(provider) {
   try {
-    await api("/api/connections", {
+    const data = await api("/api/connections", {
       method: "POST",
       body: JSON.stringify({ action: "connect", provider }),
     });
+    const connections = data.connections || [];
+    setConnectionState(connections);
+    renderConnectionsPanel(connections);
+    await syncChatWithAuth(authenticated);
     showToast("Connected!");
-    await loadConnections();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -499,12 +572,15 @@ async function connectProvider(provider) {
 
 async function disconnectProvider(provider) {
   try {
-    await api("/api/connections", {
+    const data = await api("/api/connections", {
       method: "POST",
       body: JSON.stringify({ action: "disconnect", provider }),
     });
+    const connections = data.connections || [];
+    setConnectionState(connections);
+    renderConnectionsPanel(connections);
+    await syncChatWithAuth(authenticated);
     showToast("Disconnected");
-    await loadConnections();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -513,6 +589,11 @@ async function disconnectProvider(provider) {
 async function loadPlaylists() {
   if (!authenticated) {
     playlistList.innerHTML = '<p class="muted">Sign in to see your saved playlists.</p>';
+    return;
+  }
+  if (!hasConnectedService) {
+    playlistList.innerHTML =
+      '<p class="muted">Connect a music service to unlock playlists and chat.</p>';
     return;
   }
 
@@ -621,6 +702,11 @@ chatForm.addEventListener("submit", (e) => {
     openAuthModal("signin");
     return;
   }
+  if (!hasConnectedService) {
+    showToast("Connect a music service first", true);
+    openConnectionsPanel();
+    return;
+  }
   const text = chatMessage.value.trim();
   if (!text) return;
   chatMessage.value = "";
@@ -647,7 +733,6 @@ authTabSignIn?.addEventListener("click", () => showAuthTab("signin"));
 authTabSignUp?.addEventListener("click", () => showAuthTab("signup"));
 signInForm?.addEventListener("submit", handleSignIn);
 signUpForm?.addEventListener("submit", handleSignUp);
-chatLockSignInBtn?.addEventListener("click", () => openAuthModal("signin"));
 authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
