@@ -26,11 +26,7 @@ const playlistList = document.getElementById("playlistList");
 const refreshPlaylists = document.getElementById("refreshPlaylists");
 const creditsPanel = document.getElementById("creditsPanel");
 const toast = document.getElementById("toast");
-const gate = document.getElementById("gate");
 const app = document.getElementById("app");
-const gateForm = document.getElementById("gateForm");
-const gateCode = document.getElementById("gateCode");
-const gateError = document.getElementById("gateError");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
 const chatLockSignInBtn = document.getElementById("chatLockSignInBtn");
@@ -565,67 +561,13 @@ authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
 
-function showApp() {
-  gate.classList.add("hidden");
-  app.classList.remove("hidden");
-}
-
-function showGate() {
-  gate.classList.remove("hidden");
-  app.classList.add("hidden");
-}
-
-async function requireGateOnVisit() {
-  const data = await api("/api/access");
-  if (!data.enabled) {
-    showApp();
-    return true;
-  }
-  showGate();
-  return false;
-}
-
-gateForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  gateError.classList.add("hidden");
-  const code = gateCode.value.trim();
-  if (!code) return;
-
-  try {
-    await api("/api/access", {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-    gateCode.value = "";
-    showApp();
-    await checkAuth();
-    await syncChatWithAuth(authenticated);
-  } catch (err) {
-    gateError.textContent = err.message || "Invalid access code";
-    gateError.classList.remove("hidden");
-  }
-});
-
 (async function init() {
   if (new URLSearchParams(window.location.search).get("purchase") === "success") {
     showToast("Purchase complete! Your credits are updating.");
     openCreditsPanel();
   }
 
-  try {
-    await fetch("/api/access", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "logout" }),
-    });
-  } catch {
-    /* ignore */
-  }
-
-  const unlocked = await requireGateOnVisit();
-  if (!unlocked) return;
-
+  app.classList.remove("hidden");
   await checkAuth();
   await syncChatWithAuth(authenticated);
 })();

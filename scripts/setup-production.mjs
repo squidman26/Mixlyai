@@ -62,7 +62,7 @@ async function pushSupabaseSchema() {
 async function getVercelProjectId(token) {
   if (process.env.VERCEL_PROJECT_ID) return process.env.VERCEL_PROJECT_ID;
 
-  const res = await fetch("https://api.vercel.com/v9/projects?search=spotifybot", {
+  const res = await fetch("https://api.vercel.com/v9/projects?search=mixly", {
     headers: { Authorization: `Bearer ${token}` },
   });
   const body = await res.json();
@@ -71,7 +71,7 @@ async function getVercelProjectId(token) {
   }
 
   const project = body.projects?.find((p) =>
-    p.name?.includes("spotifybot")
+    /mixly/i.test(p.name)
   ) ?? body.projects?.[0];
 
   if (!project?.id) {
