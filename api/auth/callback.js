@@ -8,7 +8,7 @@ import {
   setSessionCookie,
   verifyOAuthState,
 } from "../../lib/session.js";
-import { redirect } from "../../lib/api.js";
+import { getSession, redirect } from "../../lib/api.js";
 
 export default async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -40,7 +40,21 @@ export default async function handler(req, res) {
 
   try {
     const redirectUri = getRedirectUri(req);
-    const session = await exchangeCode(code, redirectUri);
+    const { session: existing } = getSession(req, res);
+    const spotifySession = await exchangeCode(code, redirectUri);
+
+    const session = {
+      ...spotifySession,
+      accountId: existing?.accountId ?? null,
+      username: existing?.username ?? null,
+      email: existing?.email ?? spotifySession.user?.email ?? null,
+      displayName:
+        existing?.displayName ??
+        spotifySession.user?.display_name ??
+        existing?.username ??
+        null,
+      authType: existing?.accountId ? "app" : "spotify",
+    };
 
     let supabaseWarning = null;
     try {
@@ -48,6 +62,10 @@ export default async function handler(req, res) {
       if (account?.id) {
         account = await ensureAccountCredits(session.user, account);
         session.accountId = account.id;
+        session.username = session.username || account.username;
+        session.email = session.email || account.email;
+        session.displayName =
+          session.displayName || account.display_name || account.username;
         session.supabaseSyncedAt = Date.now();
       }
     } catch (err) {

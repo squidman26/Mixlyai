@@ -1,9 +1,11 @@
 import { saveGeneratedPlaylist } from "../lib/accounts.js";
 import { applyPlan } from "../lib/apply.js";
+import { buildExportCsv } from "../lib/import.js";
 import {
   getSession,
   json,
   readJsonBody,
+  requireAppSession,
   requireMethod,
   respondInsufficientCredits,
 } from "../lib/api.js";
@@ -16,15 +18,7 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
-  if (!session?.refresh_token) {
-    json(res, 401, { error: "Connect Spotify first" });
-    return;
-  }
-
-  if (!session.accountId) {
-    json(res, 400, { error: "Account not synced yet. Refresh and try again." });
-    return;
-  }
+  if (!requireAppSession(req, res, session)) return;
 
   try {
     const body = await readJsonBody(req);
@@ -34,6 +28,7 @@ export default async function handler(req, res) {
     }
 
     const dryRun = Boolean(body.dryRun);
+    const spotifyConnected = Boolean(session.refresh_token);
     let creditResult = null;
 
     if (!dryRun) {
@@ -52,6 +47,8 @@ export default async function handler(req, res) {
     const result = await applyPlan(session, plan, {
       dryRun,
       includeAmbiguous: Boolean(body.includeAmbiguous),
+      useAppToken: !spotifyConnected,
+      exportOnly: !spotifyConnected || dryRun,
     });
 
     save(result.session);
@@ -68,10 +65,17 @@ export default async function handler(req, res) {
       }
     }
 
+    const exportCsv =
+      !spotifyConnected || dryRun
+        ? buildExportCsv(result.matched ?? [], result.summary.skipped)
+        : null;
+
     json(res, 200, {
       summary: result.summary,
       playlistUrl: result.playlistUrl,
       playlistName: result.playlistName,
+      exportCsv,
+      spotifyConnected,
       credits: creditResult?.unlimited ? null : creditResult?.credits ?? null,
       unlimitedCredits: creditResult?.unlimited ?? false,
     });

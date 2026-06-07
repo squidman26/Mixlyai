@@ -59,6 +59,12 @@ To allow a specific person (e.g. a second Spotify account):
 
 For **any** Spotify user to sign in, apply for **Extended Quota Mode** in the dashboard.
 
+### 5. Public users (no Spotify allowlist)
+
+Users can **create an account** (email/username/password) and use **CSV Import** without connecting Spotify. Song matching uses the app’s Spotify API credentials server-side; results download as CSV with Spotify URIs/links.
+
+Run `supabase/migrations/20250608120000_app_user_auth.sql` in the Supabase SQL editor before enabling signups.
+
 ## Vercel ↔ GitHub connection
 
 If deploys stop triggering:

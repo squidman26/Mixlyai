@@ -2,7 +2,22 @@ const chatLog = document.getElementById("chatLog");
 const chatForm = document.getElementById("chatForm");
 const chatMessage = document.getElementById("chatMessage");
 const authArea = document.getElementById("authArea");
-const loginBtn = document.getElementById("loginBtn");
+const openAuthBtn = document.getElementById("openAuthBtn");
+const authModal = document.getElementById("authModal");
+const authCloseBtn = document.getElementById("authCloseBtn");
+const authTabSignin = document.getElementById("authTabSignin");
+const authTabSignup = document.getElementById("authTabSignup");
+const signinForm = document.getElementById("signinForm");
+const signupForm = document.getElementById("signupForm");
+const authError = document.getElementById("authError");
+const connectSpotifyBtn = document.getElementById("connectSpotifyBtn");
+const importCsvFile = document.getElementById("importCsvFile");
+const importCsvText = document.getElementById("importCsvText");
+const importPlaylistName = document.getElementById("importPlaylistName");
+const importIncludeAmbiguous = document.getElementById("importIncludeAmbiguous");
+const importRunBtn = document.getElementById("importRunBtn");
+const importDryRunBtn = document.getElementById("importDryRunBtn");
+const importResult = document.getElementById("importResult");
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const applyBtn = document.getElementById("applyBtn");
@@ -29,6 +44,7 @@ const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 let messages = [];
 let currentPlan = null;
 let authenticated = false;
+let spotifyConnected = false;
 let chatStarted = false;
 let canonicalBaseUrl = null;
 let creditStatus = null;
@@ -57,6 +73,60 @@ function spotifyLoginUrl() {
 function goToSpotifyLogin() {
   window.location.href = spotifyLoginUrl();
 }
+
+function showAuthModal(mode = "signin") {
+  authModal.classList.remove("hidden");
+  authError.classList.add("hidden");
+  setAuthTab(mode);
+}
+
+function hideAuthModal() {
+  authModal.classList.add("hidden");
+  authError.classList.add("hidden");
+}
+
+function setAuthTab(mode) {
+  const signin = mode === "signin";
+  authTabSignin.classList.toggle("active", signin);
+  authTabSignup.classList.toggle("active", !signin);
+  signinForm.classList.toggle("hidden", !signin);
+  signupForm.classList.toggle("hidden", signin);
+  document.getElementById("authModalTitle").textContent = signin
+    ? "Sign in"
+    : "Create account";
+}
+
+function showAuthError(message) {
+  authError.textContent = message;
+  authError.classList.remove("hidden");
+}
+
+function downloadCsv(filename, content) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateApplyButtonLabel() {
+  applyBtn.textContent = spotifyConnected ? "Apply to Spotify" : "Export CSV";
+}
+
+function isAllowlistAuthError(code) {
+  return /spotify_not_allowlisted|not registered|not approved/i.test(code || "");
+}
+
+function showAllowlistHelp() {
+  showToast(
+    "Spotify connect is limited to 5 allowlisted users in Development Mode. CSV export works without Spotify.",
+    true
+  );
+}
+
+function hideAllowlistHelp() {}
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -108,19 +178,24 @@ function renderAuth(user, credits) {
       : credits
         ? `<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">${credits.credits} credits</span>`
         : "";
+    const spotifyBadge = spotifyConnected
+      ? '<span class="badge">Spotify linked</span>'
+      : '<button class="btn btn-spotify btn-small" id="headerSpotifyBtn" type="button">Connect Spotify</button>';
     authArea.innerHTML = `
       <div class="user-chip">
         <span>${escapeHtml(user.name)}</span>
         ${creditBadge}
-        ${user.product === "premium" ? '<span class="badge">Premium</span>' : ""}
+        ${spotifyBadge}
         <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
       </div>`;
     document.getElementById("logoutBtn").addEventListener("click", logout);
     document.getElementById("creditBadgeBtn")?.addEventListener("click", openCreditsPanel);
+    document.getElementById("headerSpotifyBtn")?.addEventListener("click", goToSpotifyLogin);
   } else {
-    authArea.innerHTML = `<button class="btn btn-spotify" id="loginBtn" type="button">Connect Spotify</button>`;
-    document.getElementById("loginBtn").addEventListener("click", goToSpotifyLogin);
+    authArea.innerHTML = `<button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>`;
+    document.getElementById("openAuthBtn").addEventListener("click", () => showAuthModal("signin"));
   }
+  updateApplyButtonLabel();
 }
 
 function escapeHtml(s) {
@@ -133,12 +208,14 @@ async function checkAuth() {
   try {
     const data = await api("/api/auth/status");
     authenticated = data.authenticated;
+    spotifyConnected = Boolean(data.spotifyConnected);
     creditStatus = data.credits ?? null;
     currentUser = data.authenticated ? data.user : null;
     renderAuth(currentUser, creditStatus);
     return data.authenticated;
   } catch {
     authenticated = false;
+    spotifyConnected = false;
     creditStatus = null;
     currentUser = null;
     renderAuth(null, null);
@@ -148,7 +225,7 @@ async function checkAuth() {
 
 async function loadCredits() {
   if (!authenticated) {
-    creditsPanel.innerHTML = '<p class="muted">Connect Spotify to view your credit balance.</p>';
+    creditsPanel.innerHTML = '<p class="muted">Sign in to view your credit balance.</p>';
     return;
   }
 
@@ -264,6 +341,7 @@ async function logout() {
     /* still lock locally if the server request fails */
   }
   authenticated = false;
+  spotifyConnected = false;
   creditStatus = null;
   renderAuth(null, null);
   lockChat();
@@ -322,11 +400,12 @@ async function startChat() {
     if (data.plan) showPlan(data.plan);
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (/connect spotify/i.test(err.message)) {
+    if (/sign in first/i.test(err.message)) {
       authenticated = false;
       chatStarted = false;
       lockChat();
       renderAuth(null, null);
+      showAuthModal("signin");
       showToast(err.message, true);
       return;
     }
@@ -341,7 +420,8 @@ async function startChat() {
 
 async function sendMessage(text) {
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showAuthModal("signin");
+    showToast("Sign in first", true);
     return;
   }
 
@@ -359,10 +439,11 @@ async function sendMessage(text) {
     if (data.plan) showPlan(data.plan);
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (/connect spotify/i.test(err.message)) {
+    if (/sign in first/i.test(err.message)) {
       authenticated = false;
       lockChat();
       renderAuth(null, null);
+      showAuthModal("signin");
       showToast(err.message, true);
       return;
     }
@@ -385,7 +466,8 @@ function showPlan(plan) {
 
 async function runApply(dryRun) {
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showAuthModal("signin");
+    showToast("Sign in first", true);
     return;
   }
   if (!currentPlan) return;
@@ -412,6 +494,8 @@ async function runApply(dryRun) {
     if (data.playlistUrl) {
       lines.push(`Playlist: ${data.playlistName}`);
       lines.push(`URL: ${data.playlistUrl}`);
+    } else if (data.exportCsv) {
+      lines.push("Matched tracks exported as CSV.");
     } else if (dryRun) {
       lines.push("Dry run — no changes made.");
     }
@@ -423,10 +507,25 @@ async function runApply(dryRun) {
           : escapeHtml(l)
       )
       .join("<br>");
+
+    if (data.exportCsv) {
+      const filename = `${(data.playlistName || currentPlan?.playlist?.name || "playlist").replace(/[^\w.-]+/g, "_")}.csv`;
+      applyResult.innerHTML += `<br><button class="btn btn-ghost btn-small" id="downloadApplyCsv" type="button">Download CSV</button>`;
+      document.getElementById("downloadApplyCsv")?.addEventListener("click", () => {
+        downloadCsv(filename, data.exportCsv);
+      });
+      if (!dryRun) {
+        downloadCsv(filename, data.exportCsv);
+      }
+    }
+
     applyResult.classList.remove("hidden");
 
     if (!dryRun && data.playlistUrl) {
       showToast("Playlist applied!");
+      planModal.classList.add("hidden");
+    } else if (!dryRun && data.exportCsv) {
+      showToast("CSV exported!");
       planModal.classList.add("hidden");
     }
     updateCreditsFromResponse(data);
@@ -441,7 +540,7 @@ async function runApply(dryRun) {
 
 async function loadPlaylists() {
   if (!authenticated) {
-    playlistList.innerHTML = '<p class="muted">Connect Spotify to see your playlists.</p>';
+    playlistList.innerHTML = '<p class="muted">Sign in to see your playlists.</p>';
     return;
   }
 
@@ -482,7 +581,8 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showAuthModal("signin");
+    showToast("Sign in first", true);
     return;
   }
   const text = chatMessage.value.trim();
@@ -498,14 +598,137 @@ refreshPlaylists.addEventListener("click", loadPlaylists);
 
 headerCreditsBtn?.addEventListener("click", () => {
   if (!authenticated) {
-    showToast("Connect Spotify first to view credits", true);
+    showAuthModal("signin");
+    showToast("Sign in first to view credits", true);
     return;
   }
   openCreditsPanel();
 });
 
-loginBtn?.addEventListener("click", goToSpotifyLogin);
-chatLockLoginBtn?.addEventListener("click", goToSpotifyLogin);
+openAuthBtn?.addEventListener("click", () => showAuthModal("signin"));
+chatLockLoginBtn?.addEventListener("click", () => showAuthModal("signin"));
+authCloseBtn?.addEventListener("click", hideAuthModal);
+authTabSignin?.addEventListener("click", () => setAuthTab("signin"));
+authTabSignup?.addEventListener("click", () => setAuthTab("signup"));
+connectSpotifyBtn?.addEventListener("click", goToSpotifyLogin);
+
+authModal?.addEventListener("click", (e) => {
+  if (e.target === authModal) hideAuthModal();
+});
+
+signinForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  authError.classList.add("hidden");
+  try {
+    await api("/api/auth/signin", {
+      method: "POST",
+      body: JSON.stringify({
+        login: document.getElementById("signinLogin").value,
+        password: document.getElementById("signinPassword").value,
+      }),
+    });
+    hideAuthModal();
+    await checkAuth();
+    await syncChatWithAuth(authenticated);
+    showToast("Signed in!");
+  } catch (err) {
+    showAuthError(err.message);
+  }
+});
+
+signupForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  authError.classList.add("hidden");
+  try {
+    await api("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({
+        email: document.getElementById("signupEmail").value,
+        username: document.getElementById("signupUsername").value,
+        password: document.getElementById("signupPassword").value,
+      }),
+    });
+    hideAuthModal();
+    await checkAuth();
+    await syncChatWithAuth(authenticated);
+    showToast("Account created!");
+  } catch (err) {
+    showAuthError(err.message);
+  }
+});
+
+importCsvFile?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  importCsvText.value = await file.text();
+});
+
+async function runCsvImport(dryRun) {
+  if (!authenticated) {
+    showAuthModal("signin");
+    showToast("Sign in first", true);
+    return;
+  }
+
+  const csv = importCsvText.value.trim();
+  if (!csv) {
+    showToast("Add a CSV file or paste CSV text", true);
+    return;
+  }
+
+  importRunBtn.disabled = true;
+  importDryRunBtn.disabled = true;
+  importResult.classList.add("hidden");
+
+  try {
+    const data = await api("/api/import", {
+      method: "POST",
+      body: JSON.stringify({
+        csv,
+        playlistName: importPlaylistName.value.trim() || "Imported Playlist",
+        includeAmbiguous: importIncludeAmbiguous.checked,
+        dryRun,
+      }),
+    });
+
+    const lines = [
+      `Matched ${data.summary.matched.length} / ${data.summary.total} tracks`,
+    ];
+    if (data.summary.skipped.length) {
+      lines.push(`Skipped ${data.summary.skipped.length} tracks`);
+    }
+    if (dryRun) {
+      lines.push("Preview only — no credits used.");
+    } else {
+      lines.push("Export ready.");
+    }
+
+    importResult.innerHTML = `
+      <p>${lines.map(escapeHtml).join("<br>")}</p>
+      <button class="btn btn-primary btn-small" id="downloadImportCsv" type="button">Download CSV</button>`;
+    importResult.classList.remove("hidden");
+    document.getElementById("downloadImportCsv")?.addEventListener("click", () => {
+      const filename = `${(data.playlistName || "imported_playlist").replace(/[^\w.-]+/g, "_")}.csv`;
+      downloadCsv(filename, data.exportCsv);
+    });
+
+    if (!dryRun && data.exportCsv) {
+      const filename = `${(data.playlistName || "imported_playlist").replace(/[^\w.-]+/g, "_")}.csv`;
+      downloadCsv(filename, data.exportCsv);
+    }
+
+    updateCreditsFromResponse(data);
+  } catch (err) {
+    if (handleInsufficientCredits(err)) return;
+    showToast(err.message, true);
+  } finally {
+    importRunBtn.disabled = false;
+    importDryRunBtn.disabled = false;
+  }
+}
+
+importRunBtn?.addEventListener("click", () => runCsvImport(false));
+importDryRunBtn?.addEventListener("click", () => runCsvImport(true));
 
 function showApp() {
   gate.classList.add("hidden");
@@ -571,6 +794,7 @@ gateForm.addEventListener("submit", async (e) => {
   if (params.get("auth") === "success") {
     hideAllowlistHelp();
     showToast("Spotify connected!");
+    spotifyConnected = true;
   }
   if (params.get("purchase") === "success") {
     showToast(`Purchase complete! Your credits are updating.`);

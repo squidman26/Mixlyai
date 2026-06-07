@@ -53,9 +53,7 @@
         ⚡ Credits & Plans
       </button>
       <div class="auth-area" id="authArea">
-        <button class="btn btn-spotify" id="loginBtn" type="button">
-          Connect Spotify
-        </button>
+        <button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>
       </div>
     </div>
   </header>
@@ -66,6 +64,10 @@
       <button class="tool-btn active" data-panel="chat" type="button">
         <span class="tool-icon">💬</span>
         Chat Curator
+      </button>
+      <button class="tool-btn" data-panel="import" type="button">
+        <span class="tool-icon">📥</span>
+        CSV Import
       </button>
       <button class="tool-btn" data-panel="playlists" type="button">
         <span class="tool-icon">📋</span>
@@ -81,8 +83,8 @@
       <div class="chat-shell is-locked" id="chatShell">
         <div class="chat-lock" id="chatLock">
           <div class="chat-lock-card">
-            <p>Connect Spotify to chat with the playlist curator.</p>
-            <button class="btn btn-spotify" id="chatLockLoginBtn" type="button">Connect Spotify</button>
+            <p>Sign in to chat with the playlist curator or import songs from CSV.</p>
+            <button class="btn btn-primary" id="chatLockLoginBtn" type="button">Sign in</button>
           </div>
         </div>
         <div class="chat" id="chatLog"></div>
@@ -99,13 +101,37 @@
       </div>
     </section>
 
+    <section class="panel" id="panel-import">
+      <div class="panel-head">
+        <h2>CSV Import</h2>
+      </div>
+      <div class="import-panel" id="importPanel">
+        <p class="muted">Upload a CSV with <code>artist,title</code> columns. Songs are matched on Spotify using the app API, then exported as a CSV with Spotify links.</p>
+        <label class="field-label" for="importPlaylistName">Playlist name</label>
+        <input id="importPlaylistName" type="text" placeholder="My Playlist" autocomplete="off" />
+        <label class="field-label" for="importCsvFile">CSV file</label>
+        <input id="importCsvFile" type="file" accept=".csv,text/csv" />
+        <label class="field-label" for="importCsvText">Or paste CSV</label>
+        <textarea id="importCsvText" rows="8" placeholder="artist,title&#10;The Beatles,Hey Jude"></textarea>
+        <label class="checkbox">
+          <input type="checkbox" id="importIncludeAmbiguous" />
+          Include uncertain matches
+        </label>
+        <div class="import-actions">
+          <button class="btn btn-primary" id="importRunBtn" type="button">Match &amp; export CSV</button>
+          <button class="btn btn-ghost" id="importDryRunBtn" type="button">Preview matches</button>
+        </div>
+        <div class="import-result hidden" id="importResult"></div>
+      </div>
+    </section>
+
     <section class="panel" id="panel-playlists">
       <div class="panel-head">
         <h2>Generated Playlists</h2>
         <button class="btn btn-ghost" id="refreshPlaylists" type="button">Refresh</button>
       </div>
       <div class="playlist-list" id="playlistList">
-        <p class="muted">Connect Spotify to see playlists you create here.</p>
+        <p class="muted">Sign in to see playlists you create here.</p>
       </div>
     </section>
 
@@ -120,7 +146,7 @@
         >Pay with Square</a>
       </div>
       <div class="credits-panel" id="creditsPanel">
-        <p class="muted">Connect Spotify to view your credit balance.</p>
+        <p class="muted">Sign in to view your credit balance.</p>
       </div>
     </section>
   </main>
@@ -134,11 +160,37 @@
         Include uncertain matches
       </label>
       <div class="plan-actions">
-        <button class="btn btn-primary" id="applyBtn" type="button">Apply to Spotify</button>
+        <button class="btn btn-primary" id="applyBtn" type="button">Export CSV</button>
         <button class="btn btn-ghost" id="dryRunBtn" type="button">Dry run</button>
         <button class="btn btn-ghost" id="dismissPlan" type="button">Keep chatting</button>
       </div>
       <div class="apply-result hidden" id="applyResult"></div>
+    </div>
+  </div>
+
+  <div class="auth-modal hidden" id="authModal">
+    <div class="auth-card">
+      <button class="auth-close" id="authCloseBtn" type="button" aria-label="Close">×</button>
+      <h3 id="authModalTitle">Sign in</h3>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="authTabSignin" type="button">Sign in</button>
+        <button class="auth-tab" id="authTabSignup" type="button">Create account</button>
+      </div>
+      <form class="auth-form" id="signinForm">
+        <input id="signinLogin" type="text" placeholder="Email or username" autocomplete="username" required />
+        <input id="signinPassword" type="password" placeholder="Password" autocomplete="current-password" required />
+        <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+      </form>
+      <form class="auth-form hidden" id="signupForm">
+        <input id="signupEmail" type="email" placeholder="Email" autocomplete="email" required />
+        <input id="signupUsername" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="signupPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required />
+        <button class="btn btn-primary auth-submit" type="submit">Create account</button>
+      </form>
+      <p class="auth-error hidden" id="authError"></p>
+      <div class="auth-divider"><span>optional</span></div>
+      <button class="btn btn-spotify auth-spotify-btn" id="connectSpotifyBtn" type="button">Connect Spotify</button>
+      <p class="auth-note muted">Spotify connect is only needed to push playlists directly into your library. CSV export works for everyone.</p>
     </div>
   </div>
 
