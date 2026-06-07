@@ -25,6 +25,7 @@ const exportResult = document.getElementById("exportResult");
 const playlistList = document.getElementById("playlistList");
 const refreshPlaylists = document.getElementById("refreshPlaylists");
 const creditsPanel = document.getElementById("creditsPanel");
+const connectionsPanel = document.getElementById("connectionsPanel");
 const toast = document.getElementById("toast");
 const app = document.getElementById("app");
 const chatLock = document.getElementById("chatLock");
@@ -89,6 +90,10 @@ function showAuthTab(mode) {
 
 function openCreditsPanel() {
   document.querySelector('.tool-btn[data-panel="credits"]')?.click();
+}
+
+function openConnectionsPanel() {
+  document.querySelector('.tool-btn[data-panel="connections"]')?.click();
 }
 
 function renderAuth(user, credits) {
@@ -420,6 +425,91 @@ async function copyCsv() {
   }
 }
 
+async function loadConnections() {
+  if (!authenticated) {
+    connectionsPanel.innerHTML =
+      '<p class="muted">Sign in to manage your connected music services.</p>';
+    return;
+  }
+
+  connectionsPanel.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const data = await api("/api/connections");
+    renderConnectionsPanel(data.connections || []);
+  } catch (err) {
+    connectionsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderConnectionsPanel(connections) {
+  const cards = connections
+    .map((connection) => {
+      const status = connection.connected
+        ? `<span class="connection-status connected">Connected${connection.displayName ? ` as ${escapeHtml(connection.displayName)}` : ""}</span>`
+        : '<span class="connection-status">Not connected</span>';
+
+      const action = connection.connected
+        ? `<button class="btn btn-ghost disconnect-btn" data-provider="${connection.provider}" type="button">Disconnect</button>`
+        : connection.available
+          ? `<button class="btn btn-primary connect-btn" data-provider="${connection.provider}" type="button">Connect</button>`
+          : `<span class="muted coming-soon">Coming soon</span>`;
+
+      return `
+        <div class="connection-card">
+          <div class="connection-head">
+            <div class="connection-icon" aria-hidden="true">${connection.icon}</div>
+            <div>
+              <h3>${escapeHtml(connection.name)}</h3>
+              <p class="muted">${escapeHtml(connection.description)}</p>
+            </div>
+          </div>
+          <div class="connection-body">
+            ${status}
+            ${action}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  connectionsPanel.innerHTML = `
+    <p class="connections-intro muted">Link a music service to apply playlists directly from Mixly. Export still works without connections.</p>
+    <div class="connections-list">${cards}</div>`;
+
+  connectionsPanel.querySelectorAll(".connect-btn").forEach((btn) => {
+    btn.addEventListener("click", () => connectProvider(btn.dataset.provider));
+  });
+
+  connectionsPanel.querySelectorAll(".disconnect-btn").forEach((btn) => {
+    btn.addEventListener("click", () => disconnectProvider(btn.dataset.provider));
+  });
+}
+
+async function connectProvider(provider) {
+  try {
+    await api("/api/connections", {
+      method: "POST",
+      body: JSON.stringify({ action: "connect", provider }),
+    });
+    showToast("Connected!");
+    await loadConnections();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function disconnectProvider(provider) {
+  try {
+    await api("/api/connections", {
+      method: "POST",
+      body: JSON.stringify({ action: "disconnect", provider }),
+    });
+    showToast("Disconnected");
+    await loadConnections();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
 async function loadPlaylists() {
   if (!authenticated) {
     playlistList.innerHTML = '<p class="muted">Sign in to see your saved playlists.</p>';
@@ -519,6 +609,7 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
     btn.classList.add("active");
     document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
     if (btn.dataset.panel === "playlists") loadPlaylists();
+    if (btn.dataset.panel === "connections") loadConnections();
     if (btn.dataset.panel === "credits") loadCredits();
   });
 });

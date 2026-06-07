@@ -731,6 +731,72 @@ body {
   font-size: 0.85rem;
 }
 
+.connections-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.connections-intro {
+  max-width: 560px;
+}
+
+.connections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.connection-card {
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.connection-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.connection-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(124, 92, 255, 0.15);
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.connection-head h3 {
+  margin-bottom: 0.2rem;
+}
+
+.connection-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.connection-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.connection-status.connected {
+  color: var(--accent-green);
+}
+
+.coming-soon {
+  font-size: 0.85rem;
+}
+
 @media (max-width: 768px) {
   .layout {
     grid-template-columns: 1fr;
