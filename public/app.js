@@ -142,7 +142,7 @@ async function loadCredits() {
 
   creditsPanel.innerHTML = '<p class="muted">Loading…</p>';
   try {
-    const data = await api("/api/credits/status");
+    const data = await api("/api/credits");
     creditStatus = data;
     renderAuth(currentUser, creditStatus);
     renderCreditsPanel(data);
@@ -221,7 +221,7 @@ function renderCreditsPanel(data) {
 
 async function startCheckout(tierId) {
   try {
-    const data = await api("/api/credits/checkout", {
+    const data = await api("/api/credits", {
       method: "POST",
       body: JSON.stringify({ tier: tierId }),
     });
@@ -508,7 +508,7 @@ function showGate() {
 }
 
 async function requireGateOnVisit() {
-  const data = await api("/api/access/status");
+  const data = await api("/api/access");
   if (!data.enabled) {
     showApp();
     return true;
@@ -524,7 +524,7 @@ gateForm.addEventListener("submit", async (e) => {
   if (!code) return;
 
   try {
-    await api("/api/access/verify", {
+    await api("/api/access", {
       method: "POST",
       body: JSON.stringify({ code }),
     });
@@ -571,7 +571,7 @@ gateForm.addEventListener("submit", async (e) => {
   }
 
   if (isOAuthReturn) {
-    const data = await api("/api/access/status");
+    const data = await api("/api/access");
     if (data.enabled && !data.unlocked) {
       showGate();
       return;
@@ -586,9 +586,11 @@ gateForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    await fetch("/api/access/logout", {
+    await fetch("/api/access", {
       method: "POST",
       credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "logout" }),
     });
   } catch {
     /* ignore */
