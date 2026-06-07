@@ -15,7 +15,8 @@
     "setup:production": "node scripts/setup-production.mjs",
     "check:accounts": "node scripts/check-accounts.mjs",
     "check:integration": "node scripts/check-accounts.mjs --production",
-    "vercel:env": "node scripts/add-vercel-env.mjs"
+    "vercel:env": "node scripts/add-vercel-env.mjs",
+    "migrate:vercel": "node scripts/migrate-vercel-to-mixly.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -28,6 +29,7 @@
     "open": "^10.1.0"
   },
   "devDependencies": {
-    "supabase": "^2.105.0"
+    "supabase": "^2.105.0",
+    "vercel": "^54.9.1"
   }
 }

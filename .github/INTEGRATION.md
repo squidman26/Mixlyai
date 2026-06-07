@@ -43,7 +43,25 @@ For existing Spotifybot deployments, also run `supabase/migrations/2025060812000
 
 Redeploy after saving.
 
-### 3. Configure OAuth providers
+### 3. Migrate Vercel project from Spotifybot
+
+Rename the existing Vercel project (preserves env vars and GitHub integration):
+
+```bash
+VERCEL_TOKEN=... npm run migrate:vercel
+```
+
+This renames `spotifybot` → `mixly`, sets `APP_BASE_URL` and `OAUTH_REDIRECT_URI` to `https://mixly.vercel.app`, and keeps your deployment history.
+
+To start fresh instead:
+
+```bash
+VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixly.mjs --recreate --delete-old
+```
+
+After migration, remove legacy `SPOTIFY_*` env vars and add `YOUTUBE_*` / `SOUNDCLOUD_*` from `.env.example`.
+
+### 4. Configure OAuth providers
 
 **YouTube Music (Google Cloud)**
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
@@ -55,7 +73,11 @@ Redeploy after saving.
 1. Register an app in the [SoundCloud Developer Portal](https://developers.soundcloud.com/)
 2. Add redirect URI: `https://your-domain.vercel.app/api/auth/callback`
 
-### 4. (Optional) GitHub secret for CI account checks
+### 5. Rename GitHub repo (optional)
+
+In GitHub → Settings → General → Repository name, rename `spotifybot` to `Mixly`. Re-link the repo in Vercel if the GitHub integration breaks.
+
+### 6. (Optional) GitHub secret for CI account checks
 
 In GitHub → Settings → Secrets → Actions, add:
 

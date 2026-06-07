@@ -21,11 +21,30 @@ Users choose which service to connect at login. Playlists are created on the con
 
 ## Deploy on Vercel
 
-1. Import this repo in [Vercel](https://vercel.com)
+**Production URL:** https://mixly.vercel.app
+
+### Migrate from Spotifybot (recommended)
+
+If you have the old `spotifybot` Vercel project, rename it in place (keeps env vars and GitHub link):
+
+```bash
+VERCEL_TOKEN=... npm run migrate:vercel
+```
+
+Or create a fresh project and delete the old one:
+
+```bash
+VERCEL_TOKEN=... node scripts/migrate-vercel-to-mixly.mjs --recreate --delete-old
+```
+
+If the project is under a team, add `VERCEL_TEAM_ID=team_...`.
+
+### New deployment
+
+1. Import this repo in [Vercel](https://vercel.com) as project **mixly**
 2. Add environment variables from `.env.example`
-3. Configure OAuth redirect URIs for production:
-   - `https://your-domain.vercel.app/api/auth/callback`
-4. Set `APP_BASE_URL` and `OAUTH_REDIRECT_URI` in Vercel to your production URL
+3. Set `APP_BASE_URL=https://mixly.vercel.app` and `OAUTH_REDIRECT_URI=https://mixly.vercel.app/api/auth/callback`
+4. Configure the same redirect URI in Google Cloud and SoundCloud developer consoles
 5. Enable **YouTube Data API v3** in [Google Cloud Console](https://console.cloud.google.com/)
 6. Register your app in the [SoundCloud Developer Portal](https://developers.soundcloud.com/)
 

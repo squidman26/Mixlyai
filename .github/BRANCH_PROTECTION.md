@@ -1,14 +1,9 @@
-# Protect the `main` branch
+# Branch protection (main)
 
-The cloud agent cannot enable branch protection on this repository (admin access required). A repo owner should apply these settings in GitHub:
+Recommended settings for the Mixly repository:
 
-1. Open **Settings → Branches → Branch protection rules**
-2. Add a rule for `main`
-3. Enable:
-   - **Require a pull request before merging**
-   - **Require approvals** (1 or more)
-   - **Require status checks to pass** (add the Vercel check when available)
-   - **Do not allow bypassing the above settings** (recommended)
-   - **Restrict who can push to matching branches** (optional)
+- Require pull request before merging
+- Require status checks: **Vercel + Supabase Integration Check**
+- Require branches to be up to date before merging
 
-Direct link: https://github.com/squidman26/spotifybot/settings/branches
+Configure at: GitHub → Settings → Branches → Add rule for `main`
