@@ -12,7 +12,6 @@ const applyResult = document.getElementById("applyResult");
 const includeAmbiguous = document.getElementById("includeAmbiguous");
 const playlistList = document.getElementById("playlistList");
 const refreshPlaylists = document.getElementById("refreshPlaylists");
-const refreshCredits = document.getElementById("refreshCredits");
 const creditsPanel = document.getElementById("creditsPanel");
 const toast = document.getElementById("toast");
 const gate = document.getElementById("gate");
@@ -466,8 +465,6 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
     if (btn.dataset.panel === "credits") loadCredits();
   });
 });
-
-refreshCredits?.addEventListener("click", loadCredits);
 
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();

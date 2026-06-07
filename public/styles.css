@@ -625,6 +625,10 @@ body {
   margin-top: auto;
 }
 
+.square-link-btn {
+  text-decoration: none;
+}
+
 .credits-note {
   font-size: 0.85rem;
   color: var(--muted);
