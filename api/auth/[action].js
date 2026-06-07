@@ -1,4 +1,5 @@
 import { getAccountById } from "../../lib/accounts.js";
+import { accountHasConnectedService } from "../../lib/connections.js";
 import { signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { getCanonicalBaseUrl } from "../../lib/config.js";
@@ -99,6 +100,13 @@ async function handleStatus(req, res) {
       supabaseError = err.message;
     }
 
+    let hasConnectedService = false;
+    try {
+      hasConnectedService = await accountHasConnectedService(session.accountId);
+    } catch (err) {
+      console.error("Connection check failed:", err.message);
+    }
+
     json(res, 200, {
       authenticated: true,
       user: {
@@ -108,6 +116,7 @@ async function handleStatus(req, res) {
         accountId: session.accountId,
       },
       credits: account ? buildCreditStatus(account, null) : null,
+      hasConnectedService,
       squareConfigured: isSquareConfigured(),
       supabase: {
         synced: Boolean(session.accountId),

@@ -9,7 +9,7 @@ import {
   getSession,
   json,
   readJsonBody,
-  requireAppSession,
+  requireConnectedService,
   requireMethod,
   respondInsufficientCredits,
 } from "../lib/api.js";
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session } = getSession(req, res);
-  if (!requireAppSession(req, res, session)) return;
+  if (!(await requireConnectedService(req, res, session))) return;
 
   try {
     const body = await readJsonBody(req);
