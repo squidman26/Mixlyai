@@ -49,6 +49,16 @@ body {
   backdrop-filter: blur(12px);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-credits-btn {
+  white-space: nowrap;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -543,6 +553,10 @@ body {
   color: #c4b5fd;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.credits-badge-btn {
+  cursor: pointer;
 }
 
 .credits-panel {

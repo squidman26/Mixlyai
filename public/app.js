@@ -23,6 +23,7 @@ const gateError = document.getElementById("gateError");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
 const chatLockLoginBtn = document.getElementById("chatLockLoginBtn");
+const headerCreditsBtn = document.getElementById("headerCreditsBtn");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
 let messages = [];
@@ -83,12 +84,17 @@ async function api(path, options = {}) {
   return data;
 }
 
+function openCreditsPanel() {
+  const creditsBtn = document.querySelector('.tool-btn[data-panel="credits"]');
+  creditsBtn?.click();
+}
+
 function renderAuth(user, credits) {
   if (user) {
     const creditBadge = credits?.unlimited
-      ? '<span class="credits-badge">Unlimited credits</span>'
+      ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">Unlimited credits</span>'
       : credits
-        ? `<span class="credits-badge">${credits.credits} credits</span>`
+        ? `<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">${credits.credits} credits</span>`
         : "";
     authArea.innerHTML = `
       <div class="user-chip">
@@ -98,6 +104,7 @@ function renderAuth(user, credits) {
         <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
       </div>`;
     document.getElementById("logoutBtn").addEventListener("click", logout);
+    document.getElementById("creditBadgeBtn")?.addEventListener("click", openCreditsPanel);
   } else {
     authArea.innerHTML = `<button class="btn btn-spotify" id="loginBtn" type="button">Connect Spotify</button>`;
     document.getElementById("loginBtn").addEventListener("click", goToSpotifyLogin);
@@ -233,7 +240,7 @@ function updateCreditsFromResponse(data) {
 function handleInsufficientCredits(err) {
   if (!/insufficient credits/i.test(err.message)) return false;
   showToast("You are out of credits. Open Credits to upgrade.", true);
-  document.querySelector('.tool-btn[data-panel="credits"]')?.click();
+  openCreditsPanel();
   loadCredits();
   return true;
 }
@@ -479,6 +486,14 @@ dryRunBtn.addEventListener("click", () => runApply(true));
 dismissPlan.addEventListener("click", () => planModal.classList.add("hidden"));
 refreshPlaylists.addEventListener("click", loadPlaylists);
 
+headerCreditsBtn?.addEventListener("click", () => {
+  if (!authenticated) {
+    showToast("Connect Spotify first to view credits", true);
+    return;
+  }
+  openCreditsPanel();
+});
+
 loginBtn?.addEventListener("click", goToSpotifyLogin);
 chatLockLoginBtn?.addEventListener("click", goToSpotifyLogin);
 
@@ -546,7 +561,7 @@ gateForm.addEventListener("submit", async (e) => {
   if (params.get("auth") === "success") showToast("Spotify connected!");
   if (params.get("purchase") === "success") {
     showToast(`Purchase complete! Your credits are updating.`);
-    document.querySelector('.tool-btn[data-panel="credits"]')?.click();
+    openCreditsPanel();
   }
   if (params.get("supabase_error")) {
     showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
