@@ -1,10 +1,10 @@
 {
-  "name": "playlist-builder",
-  "version": "1.0.0",
-  "description": "Match artist/song CSV rows on Spotify and create a playlist",
+  "name": "mixly",
+  "version": "2.0.0",
+  "description": "AI playlist builder for YouTube Music and SoundCloud",
   "type": "module",
   "bin": {
-    "playlist-builder": "./src/index.js"
+    "mixly": "./src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",

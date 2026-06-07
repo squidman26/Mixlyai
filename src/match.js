@@ -1,4 +1,4 @@
-import { searchTrack } from "./spotify.js";
+import { searchTrack } from "./music-cli.js";
 
 function normalize(s) {
   return s
@@ -36,8 +36,8 @@ function scoreCandidate(requestedArtist, requestedTitle, track) {
   return score;
 }
 
-export async function matchTrack(artist, title) {
-  const candidates = await searchTrack(artist, title);
+export async function matchTrack(provider, artist, title) {
+  const candidates = await searchTrack(provider, artist, title);
 
   if (candidates.length === 0) {
     return { status: "not_found", track: null, candidates: [] };

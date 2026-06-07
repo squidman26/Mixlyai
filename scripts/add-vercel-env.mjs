@@ -24,13 +24,13 @@ if (!token) {
 async function getProjectId() {
   if (process.env.VERCEL_PROJECT_ID) return process.env.VERCEL_PROJECT_ID;
 
-  const res = await fetch("https://api.vercel.com/v9/projects?search=spotifybot", {
+  const res = await fetch("https://api.vercel.com/v9/projects?search=mixly", {
     headers: { Authorization: `Bearer ${token}` },
   });
   const body = await res.json();
   if (!res.ok) throw new Error(JSON.stringify(body));
   const project =
-    body.projects?.find((p) => p.name?.includes("spotifybot")) ??
+    body.projects?.find((p) => p.name?.includes("mixly")) ??
     body.projects?.[0];
   if (!project?.id) throw new Error("Could not find Vercel project");
   return project.id;

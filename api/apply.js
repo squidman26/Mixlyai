@@ -16,8 +16,8 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
-  if (!session?.refresh_token) {
-    json(res, 401, { error: "Connect Spotify first" });
+  if (!session?.refresh_token || !session?.provider) {
+    json(res, 401, { error: "Connect YouTube Music or SoundCloud first" });
     return;
   }
 

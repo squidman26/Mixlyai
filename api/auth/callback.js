@@ -1,10 +1,12 @@
-import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
+import { upsertAccountFromProviderUser } from "../../lib/accounts.js";
 import { ensureAccountCredits } from "../../lib/credits.js";
 import { getBaseUrl, getRedirectUri } from "../../lib/config.js";
-import { exchangeCode } from "../../lib/spotify.js";
+import { exchangeCode } from "../../lib/music.js";
+import { isValidProvider } from "../../lib/music.js";
 import {
   clearStateCookie,
   readOAuthState,
+  readProviderCookie,
   setSessionCookie,
   verifyOAuthState,
 } from "../../lib/session.js";
@@ -15,6 +17,7 @@ export default async function handler(req, res) {
   const error = url.searchParams.get("error");
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const provider = readProviderCookie(req);
 
   if (error) {
     redirect(
@@ -27,11 +30,12 @@ export default async function handler(req, res) {
   const cookieNonce = readOAuthState(req);
   const stateValid = verifyOAuthState(state, cookieNonce);
 
-  if (!code || !state || !stateValid) {
+  if (!code || !state || !stateValid || !isValidProvider(provider)) {
     console.error("OAuth state rejected", {
       hasCode: Boolean(code),
       hasState: Boolean(state),
       hasCookie: Boolean(cookieNonce),
+      provider,
       host: req.headers.host,
     });
     redirect(res, `${getBaseUrl(req)}/?auth_error=invalid_state`);
@@ -40,11 +44,11 @@ export default async function handler(req, res) {
 
   try {
     const redirectUri = getRedirectUri(req);
-    const session = await exchangeCode(code, redirectUri);
+    const session = await exchangeCode(provider, code, redirectUri);
 
     let supabaseWarning = null;
     try {
-      let account = await upsertAccountFromSpotifyUser(session.user);
+      let account = await upsertAccountFromProviderUser(session.user);
       if (account?.id) {
         account = await ensureAccountCredits(session.user, account);
         session.accountId = account.id;
@@ -58,7 +62,7 @@ export default async function handler(req, res) {
     setSessionCookie(res, session);
     clearStateCookie(res);
 
-    const params = new URLSearchParams({ auth: "success" });
+    const params = new URLSearchParams({ auth: "success", provider });
     if (supabaseWarning) {
       params.set("supabase_error", supabaseWarning);
     }

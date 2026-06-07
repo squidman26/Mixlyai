@@ -2,7 +2,6 @@ const chatLog = document.getElementById("chatLog");
 const chatForm = document.getElementById("chatForm");
 const chatMessage = document.getElementById("chatMessage");
 const authArea = document.getElementById("authArea");
-const loginBtn = document.getElementById("loginBtn");
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const applyBtn = document.getElementById("applyBtn");
@@ -21,9 +20,7 @@ const gateCode = document.getElementById("gateCode");
 const gateError = document.getElementById("gateError");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
-const chatLockLoginBtn = document.getElementById("chatLockLoginBtn");
 const headerCreditsBtn = document.getElementById("headerCreditsBtn");
-const authNotice = document.getElementById("authNotice");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
 let messages = [];
@@ -33,6 +30,11 @@ let chatStarted = false;
 let canonicalBaseUrl = null;
 let creditStatus = null;
 let currentUser = null;
+
+const PROVIDER_LABELS = {
+  youtube: "YouTube Music",
+  soundcloud: "SoundCloud",
+};
 
 function isPreviewHost() {
   const origin = window.location.origin;
@@ -44,18 +46,18 @@ function isPreviewHost() {
     }
   }
   const host = window.location.hostname;
-  return host.endsWith(".vercel.app") && host !== "spotifybot-eight.vercel.app";
+  return host.endsWith(".vercel.app") && host !== "mixly.vercel.app";
 }
 
-function spotifyLoginUrl() {
+function loginUrl(provider) {
   if (isPreviewHost() && canonicalBaseUrl) {
-    return `${canonicalBaseUrl}/api/auth/login`;
+    return `${canonicalBaseUrl}/api/auth/login?provider=${provider}`;
   }
-  return "/api/auth/login";
+  return `/api/auth/login?provider=${provider}`;
 }
 
-function goToSpotifyLogin() {
-  window.location.href = spotifyLoginUrl();
+function goToLogin(provider) {
+  window.location.href = loginUrl(provider);
 }
 
 function showToast(text, isError = false) {
@@ -66,14 +68,6 @@ function showToast(text, isError = false) {
 }
 
 function formatAuthError(code) {
-  if (code === "spotify_not_allowlisted") {
-    return (
-      "This Spotify account is not allowlisted for the app. Add its email in Spotify Developer Dashboard → Users & Access, or apply for Extended Quota Mode."
-    );
-  }
-  if (/spotify_not_allowlisted|not registered|not approved/i.test(code)) {
-    return formatAuthError("spotify_not_allowlisted");
-  }
   return `Auth failed: ${code}`;
 }
 
@@ -101,8 +95,23 @@ function openCreditsPanel() {
   creditsBtn?.click();
 }
 
+function loginButtonsHtml() {
+  return `
+    <div class="login-buttons">
+      <button class="btn btn-youtube" data-provider="youtube" type="button">YouTube Music</button>
+      <button class="btn btn-soundcloud" data-provider="soundcloud" type="button">SoundCloud</button>
+    </div>`;
+}
+
+function bindLoginButtons(root) {
+  root.querySelectorAll("[data-provider]").forEach((btn) => {
+    btn.addEventListener("click", () => goToLogin(btn.dataset.provider));
+  });
+}
+
 function renderAuth(user, credits) {
   if (user) {
+    const providerLabel = PROVIDER_LABELS[user.provider] || user.providerName || "Music";
     const creditBadge = credits?.unlimited
       ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">Unlimited credits</span>'
       : credits
@@ -110,16 +119,16 @@ function renderAuth(user, credits) {
         : "";
     authArea.innerHTML = `
       <div class="user-chip">
+        <span class="provider-badge">${escapeHtml(providerLabel)}</span>
         <span>${escapeHtml(user.name)}</span>
         ${creditBadge}
-        ${user.product === "premium" ? '<span class="badge">Premium</span>' : ""}
         <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
       </div>`;
     document.getElementById("logoutBtn").addEventListener("click", logout);
     document.getElementById("creditBadgeBtn")?.addEventListener("click", openCreditsPanel);
   } else {
-    authArea.innerHTML = `<button class="btn btn-spotify" id="loginBtn" type="button">Connect Spotify</button>`;
-    document.getElementById("loginBtn").addEventListener("click", goToSpotifyLogin);
+    authArea.innerHTML = loginButtonsHtml();
+    bindLoginButtons(authArea);
   }
 }
 
@@ -148,7 +157,7 @@ async function checkAuth() {
 
 async function loadCredits() {
   if (!authenticated) {
-    creditsPanel.innerHTML = '<p class="muted">Connect Spotify to view your credit balance.</p>';
+    creditsPanel.innerHTML = '<p class="muted">Connect YouTube Music or SoundCloud to view your credit balance.</p>';
     return;
   }
 
@@ -322,7 +331,7 @@ async function startChat() {
     if (data.plan) showPlan(data.plan);
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (/connect spotify/i.test(err.message)) {
+    if (/connect youtube|connect soundcloud|music service/i.test(err.message)) {
       authenticated = false;
       chatStarted = false;
       lockChat();
@@ -341,7 +350,7 @@ async function startChat() {
 
 async function sendMessage(text) {
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showToast("Connect YouTube Music or SoundCloud first", true);
     return;
   }
 
@@ -359,7 +368,7 @@ async function sendMessage(text) {
     if (data.plan) showPlan(data.plan);
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (/connect spotify/i.test(err.message)) {
+    if (/connect youtube|connect soundcloud|music service/i.test(err.message)) {
       authenticated = false;
       lockChat();
       renderAuth(null, null);
@@ -385,7 +394,7 @@ function showPlan(plan) {
 
 async function runApply(dryRun) {
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showToast("Connect YouTube Music or SoundCloud first", true);
     return;
   }
   if (!currentPlan) return;
@@ -439,9 +448,13 @@ async function runApply(dryRun) {
   }
 }
 
+function openLabel(provider) {
+  return PROVIDER_LABELS[provider] || "Open";
+}
+
 async function loadPlaylists() {
   if (!authenticated) {
-    playlistList.innerHTML = '<p class="muted">Connect Spotify to see your playlists.</p>';
+    playlistList.innerHTML = '<p class="muted">Connect a music service to see your playlists.</p>';
     return;
   }
 
@@ -458,8 +471,8 @@ async function loadPlaylists() {
         (p) => `
       <div class="playlist-item">
         <strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${p.tracks} tracks</div>
-        <a href="${p.url}" target="_blank" rel="noopener">Open in Spotify</a>
+        <div class="muted">${p.tracks} tracks · ${escapeHtml(openLabel(p.provider))}</div>
+        <a href="${p.url}" target="_blank" rel="noopener">Open playlist</a>
       </div>`
       )
       .join("");
@@ -482,7 +495,7 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
   if (!authenticated) {
-    showToast("Connect Spotify first", true);
+    showToast("Connect YouTube Music or SoundCloud first", true);
     return;
   }
   const text = chatMessage.value.trim();
@@ -498,14 +511,13 @@ refreshPlaylists.addEventListener("click", loadPlaylists);
 
 headerCreditsBtn?.addEventListener("click", () => {
   if (!authenticated) {
-    showToast("Connect Spotify first to view credits", true);
+    showToast("Connect a music service first to view credits", true);
     return;
   }
   openCreditsPanel();
 });
 
-loginBtn?.addEventListener("click", goToSpotifyLogin);
-chatLockLoginBtn?.addEventListener("click", goToSpotifyLogin);
+bindLoginButtons(chatLock);
 
 function showApp() {
   gate.classList.add("hidden");
@@ -569,20 +581,19 @@ gateForm.addEventListener("submit", async (e) => {
   }
 
   if (params.get("auth") === "success") {
-    hideAllowlistHelp();
-    showToast("Spotify connected!");
+    const provider = params.get("provider");
+    const label = PROVIDER_LABELS[provider] || "Music service";
+    showToast(`${label} connected!`);
   }
   if (params.get("purchase") === "success") {
     showToast(`Purchase complete! Your credits are updating.`);
     openCreditsPanel();
   }
   if (params.get("supabase_error")) {
-    showToast(`Spotify connected, but account sync failed: ${params.get("supabase_error")}`, true);
+    showToast(`Connected, but account sync failed: ${params.get("supabase_error")}`, true);
   }
   if (params.get("auth_error")) {
-    const authError = params.get("auth_error");
-    showToast(formatAuthError(authError), true);
-    if (isAllowlistAuthError(authError)) showAllowlistHelp();
+    showToast(formatAuthError(params.get("auth_error")), true);
   }
 
   if (isOAuthReturn) {
@@ -615,7 +626,7 @@ gateForm.addEventListener("submit", async (e) => {
   if (!unlocked) return;
 
   if (isPreviewHost() && canonicalBaseUrl) {
-    showToast("Spotify login uses the production site.", false);
+    showToast("Login uses the production site.", false);
   }
 
   await checkAuth();

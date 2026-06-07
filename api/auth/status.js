@@ -1,6 +1,6 @@
-import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
+import { upsertAccountFromProviderUser } from "../../lib/accounts.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
-import { ensureValidSession } from "../../lib/spotify.js";
+import { ensureValidSession, getProviderName } from "../../lib/music.js";
 import { getSession, json, requireMethod } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
 import { isSquareConfigured } from "../../lib/square.js";
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
-  if (!session?.refresh_token) {
+  if (!session?.refresh_token || !session?.provider) {
     json(res, 200, { authenticated: false });
     return;
   }
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     let account = null;
     if (valid.user?.id && (!valid.accountId || !valid.supabaseSyncedAt)) {
       try {
-        account = await upsertAccountFromSpotifyUser(valid.user);
+        account = await upsertAccountFromProviderUser(valid.user);
         if (account?.id) {
           valid = {
             ...valid,
@@ -56,8 +56,10 @@ export default async function handler(req, res) {
     json(res, 200, {
       authenticated: true,
       user: {
-        name: valid.user?.display_name || "Spotify User",
+        name: valid.user?.display_name || `${getProviderName(valid.provider)} User`,
         id: valid.user?.id,
+        provider: valid.provider,
+        providerName: getProviderName(valid.provider),
         product: valid.user?.product,
         accountId: valid.accountId ?? null,
         lastLoginAt: valid.supabaseSyncedAt ?? null,

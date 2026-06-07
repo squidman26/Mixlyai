@@ -11,7 +11,7 @@ Verify anytime:
 
 ```bash
 # Production health (no secrets needed)
-curl https://spotifybot-eight.vercel.app/api/health/supabase
+curl https://mixly.vercel.app/api/health/supabase
 
 # Full account check (needs secret key)
 SUPABASE_SECRET_KEY=sb_secret_... node scripts/check-accounts.mjs
@@ -23,48 +23,42 @@ GitHub Actions also runs `.github/workflows/integration-check.yml` on every push
 
 ### 1. Create tables
 
-Run `supabase/setup.sql` in [Supabase SQL editor](https://supabase.com/dashboard/project/npkmlflciakpzkskkqvy/sql).
+Run `supabase/setup.sql` in your Supabase SQL editor.
+
+For existing Spotifybot deployments, also run `supabase/migrations/20250608120000_mixly_providers.sql`.
 
 ### 2. Add Vercel environment variables
-
-In [Vercel project settings](https://vercel.com/playlistmaker-s-projects/spotifybot/settings/environment-variables):
 
 | Variable | Environments |
 |----------|--------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Production, Preview |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Production, Preview |
 | `SUPABASE_SECRET_KEY` | Production, Preview |
+| `YOUTUBE_CLIENT_ID` | Production, Preview |
+| `YOUTUBE_CLIENT_SECRET` | Production, Preview |
+| `SOUNDCLOUD_CLIENT_ID` | Production, Preview |
+| `SOUNDCLOUD_CLIENT_SECRET` | Production, Preview |
+| `OAUTH_REDIRECT_URI` | Production |
+| `APP_BASE_URL` | Production |
 
 Redeploy after saving.
 
-### 3. (Optional) GitHub secret for CI account checks
+### 3. Configure OAuth providers
+
+**YouTube Music (Google Cloud)**
+1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable **YouTube Data API v3**
+3. Create OAuth 2.0 credentials (Web application)
+4. Add redirect URI: `https://your-domain.vercel.app/api/auth/callback`
+
+**SoundCloud**
+1. Register an app in the [SoundCloud Developer Portal](https://developers.soundcloud.com/)
+2. Add redirect URI: `https://your-domain.vercel.app/api/auth/callback`
+
+### 4. (Optional) GitHub secret for CI account checks
 
 In GitHub → Settings → Secrets → Actions, add:
 
 - `SUPABASE_SECRET_KEY` — same secret key from Supabase
 
 This lets the integration workflow list logged-in accounts after each deploy.
-
-### 4. Allow Spotify users to sign in
-
-Spotify apps start in **Development Mode**. Only the app owner plus up to **5 allowlisted users** can use the API. Anyone else gets a 403: *User is not registered for this application*.
-
-To allow a specific person (e.g. a second Spotify account):
-
-1. Open [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Select the Spotifybot app
-3. Go to **Settings** → **Users and Access**
-4. Click **Add new user** and enter their **Spotify account email**
-5. Wait up to 15 minutes, then connect again
-
-For **any** Spotify user to sign in, apply for **Extended Quota Mode** in the dashboard.
-
-## Vercel ↔ GitHub connection
-
-If deploys stop triggering:
-
-1. [Vercel Dashboard](https://vercel.com/playlistmaker-s-projects/spotifybot) → Settings → Git
-2. Confirm repository `squidman26/spotifybot` is connected
-3. Production branch should be `main`
-
-Or reconnect: Vercel → Add New → Project → Import `squidman26/spotifybot`.
