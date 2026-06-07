@@ -19,6 +19,7 @@ const gateForm = document.getElementById("gateForm");
 const gateCode = document.getElementById("gateCode");
 const gateError = document.getElementById("gateError");
 const chatLock = document.getElementById("chatLock");
+const chatShell = document.getElementById("chatShell");
 const chatLockLoginBtn = document.getElementById("chatLockLoginBtn");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
@@ -113,7 +114,11 @@ async function checkAuth() {
 }
 
 async function logout() {
-  await api("/api/auth/logout", { method: "POST" });
+  try {
+    await api("/api/auth/logout", { method: "POST" });
+  } catch {
+    /* still lock locally if the server request fails */
+  }
   authenticated = false;
   renderAuth(null);
   lockChat();
@@ -121,6 +126,7 @@ async function logout() {
 }
 
 function lockChat() {
+  chatShell.classList.add("is-locked");
   chatLock.classList.remove("hidden");
   chatMessage.disabled = true;
   chatSubmitBtn.disabled = true;
@@ -132,6 +138,7 @@ function lockChat() {
 }
 
 async function unlockAndStartChat() {
+  chatShell.classList.remove("is-locked");
   chatLock.classList.add("hidden");
   chatMessage.disabled = false;
   chatSubmitBtn.disabled = false;
@@ -169,6 +176,15 @@ async function startChat() {
     addMessage("assistant", data.reply);
     if (data.plan) showPlan(data.plan);
   } catch (err) {
+    if (/connect spotify/i.test(err.message)) {
+      authenticated = false;
+      chatStarted = false;
+      lockChat();
+      renderAuth(null);
+      showToast(err.message, true);
+      return;
+    }
+    chatLog.querySelector(".msg.system")?.remove();
     addMessage("system", `Error: ${err.message}`);
   }
 }
@@ -192,10 +208,19 @@ async function sendMessage(text) {
     if (data.reply) addMessage("assistant", data.reply);
     if (data.plan) showPlan(data.plan);
   } catch (err) {
+    if (/connect spotify/i.test(err.message)) {
+      authenticated = false;
+      lockChat();
+      renderAuth(null);
+      showToast(err.message, true);
+      return;
+    }
     addMessage("system", `Error: ${err.message}`);
   } finally {
-    chatMessage.disabled = false;
-    chatMessage.focus();
+    if (authenticated) {
+      chatMessage.disabled = false;
+      chatMessage.focus();
+    }
   }
 }
 
@@ -301,6 +326,10 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
 
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
+  if (!authenticated) {
+    showToast("Connect Spotify first", true);
+    return;
+  }
   const text = chatMessage.value.trim();
   if (!text) return;
   chatMessage.value = "";

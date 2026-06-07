@@ -69,22 +69,25 @@
     </aside>
 
     <section class="panel active" id="panel-chat">
-      <div class="chat-lock" id="chatLock">
-        <div class="chat-lock-card">
-          <p>Connect Spotify to chat with the playlist curator.</p>
-          <button class="btn btn-spotify" id="chatLockLoginBtn" type="button">Connect Spotify</button>
+      <div class="chat-shell is-locked" id="chatShell">
+        <div class="chat-lock" id="chatLock">
+          <div class="chat-lock-card">
+            <p>Connect Spotify to chat with the playlist curator.</p>
+            <button class="btn btn-spotify" id="chatLockLoginBtn" type="button">Connect Spotify</button>
+          </div>
         </div>
+        <div class="chat" id="chatLog"></div>
+        <form class="chat-input" id="chatForm">
+          <input
+            id="chatMessage"
+            type="text"
+            placeholder="Describe your vibe, genre, or playlist idea…"
+            autocomplete="off"
+            disabled
+          />
+          <button class="btn btn-primary" type="submit" disabled>Send</button>
+        </form>
       </div>
-      <div class="chat" id="chatLog"></div>
-      <form class="chat-input" id="chatForm">
-        <input
-          id="chatMessage"
-          type="text"
-          placeholder="Describe your vibe, genre, or playlist idea…"
-          autocomplete="off"
-        />
-        <button class="btn btn-primary" type="submit">Send</button>
-      </form>
     </section>
 
     <section class="panel" id="panel-playlists">
