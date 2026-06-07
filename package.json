@@ -15,7 +15,8 @@
     "db:auth": "node scripts/apply-auth-schema.mjs",
     "check:accounts": "node scripts/check-accounts.mjs",
     "check:integration": "node scripts/check-accounts.mjs --production",
-    "vercel:env": "node scripts/add-vercel-env.mjs"
+    "vercel:env": "node scripts/add-vercel-env.mjs",
+    "soundcloud:resolve": "node scripts/soundcloud-resolve.mjs"
   },
   "engines": {
     "node": ">=18"
