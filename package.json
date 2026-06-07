@@ -25,8 +25,7 @@
     "commander": "^13.1.0",
     "csv-parse": "^5.6.0",
     "dotenv": "^16.4.7",
-    "open": "^10.1.0",
-    "square": "^43.2.1"
+    "open": "^10.1.0"
   },
   "devDependencies": {
     "supabase": "^2.105.0"
