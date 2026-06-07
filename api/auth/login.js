@@ -5,10 +5,13 @@ import {
   getProviderAuthConfig,
 } from "../../lib/config.js";
 import { isValidProvider } from "../../lib/music.js";
+import { generatePkce } from "../../lib/pkce.js";
 import {
+  clearStateCookie,
   createOAuthState,
   setStateCookie,
   setProviderCookie,
+  setPkceCookie,
 } from "../../lib/session.js";
 import { redirect, json } from "../../lib/api.js";
 
@@ -43,7 +46,9 @@ export default function handler(req, res) {
     return;
   }
 
-  const { state, nonce } = createOAuthState();
+  clearStateCookie(res);
+
+  const { state, nonce } = createOAuthState(provider);
   setStateCookie(res, nonce);
   setProviderCookie(res, provider);
 
@@ -52,13 +57,20 @@ export default function handler(req, res) {
     client_id: config.clientId,
     response_type: "code",
     redirect_uri: config.redirectUri,
-    scope: authEntry.scopes,
     state,
   });
 
   if (provider === "youtube") {
+    params.set("scope", authEntry.scopes);
     params.set("access_type", "offline");
     params.set("prompt", "consent");
+  }
+
+  if (provider === "soundcloud") {
+    const { verifier, challenge } = generatePkce();
+    setPkceCookie(res, verifier);
+    params.set("code_challenge", challenge);
+    params.set("code_challenge_method", "S256");
   }
 
   redirect(res, `${authEntry.authUrl}?${params}`);
