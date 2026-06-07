@@ -16,7 +16,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const PROJECT_REF = "npkmlflciakpzkskkqvy";
 
-const MIGRATIONS = ["20250607170000_fix_auth_columns.sql"];
+const MIGRATIONS = [
+  "20250607170000_fix_auth_columns.sql",
+  "20250607180000_app_external_id.sql",
+];
 
 async function runQuery(token, sql) {
   const res = await fetch(
