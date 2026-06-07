@@ -19,6 +19,7 @@ const signUpError = document.getElementById("signUpError");
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const exportBtn = document.getElementById("exportBtn");
+const applySoundCloudBtn = document.getElementById("applySoundCloudBtn");
 const copyCsvBtn = document.getElementById("copyCsvBtn");
 const dismissPlan = document.getElementById("dismissPlan");
 const exportResult = document.getElementById("exportResult");
@@ -41,6 +42,7 @@ let authenticated = false;
 let chatStarted = false;
 let creditStatus = null;
 let currentUser = null;
+let soundcloudConnected = false;
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -117,6 +119,29 @@ function renderAuth(user, credits) {
   }
 }
 
+async function refreshConnectionState() {
+  if (!authenticated) {
+    soundcloudConnected = false;
+    updatePlanActions();
+    return;
+  }
+
+  try {
+    const data = await api("/api/connections");
+    const soundcloud = (data.connections || []).find(
+      (connection) => connection.provider === "soundcloud"
+    );
+    soundcloudConnected = Boolean(soundcloud?.connected && soundcloud?.available);
+  } catch {
+    soundcloudConnected = false;
+  }
+  updatePlanActions();
+}
+
+function updatePlanActions() {
+  applySoundCloudBtn?.classList.toggle("hidden", !soundcloudConnected);
+}
+
 async function checkAuth() {
   try {
     const data = await api("/api/auth/status");
@@ -125,13 +150,16 @@ async function checkAuth() {
     currentUser = data.authenticated ? data.user : null;
     renderAuth(currentUser, creditStatus);
     updateChatLock();
+    await refreshConnectionState();
     return data.authenticated;
   } catch {
     authenticated = false;
     creditStatus = null;
     currentUser = null;
+    soundcloudConnected = false;
     renderAuth(null, null);
     updateChatLock();
+    updatePlanActions();
     return false;
   }
 }
@@ -370,19 +398,24 @@ function showPlan(plan) {
   currentPlan = plan;
   planSummary.textContent = plan.summary;
   exportResult.classList.add("hidden");
+  updatePlanActions();
   planModal.classList.remove("hidden");
 }
 
-async function runExport() {
+async function runExport({ applyTo } = {}) {
   if (!authenticated || !currentPlan) return;
 
   exportBtn.disabled = true;
+  applySoundCloudBtn.disabled = true;
   copyCsvBtn.disabled = true;
 
   try {
     const data = await api("/api/export", {
       method: "POST",
-      body: JSON.stringify({ plan: currentPlan }),
+      body: JSON.stringify({
+        plan: currentPlan,
+        ...(applyTo ? { applyTo } : {}),
+      }),
     });
 
     lastExportCsv = data.csv;
@@ -390,9 +423,21 @@ async function runExport() {
       `Saved "${data.playlist?.name || currentPlan.playlist?.name}"`,
       `${currentPlan.tracks?.length ?? 0} tracks`,
     ];
-    exportResult.innerHTML = lines.map((l) => escapeHtml(l)).join("<br>");
+
+    if (data.soundcloud) {
+      const matched = data.soundcloud.matched?.length ?? 0;
+      const unmatched = data.soundcloud.unmatched?.length ?? 0;
+      lines.push(`SoundCloud: matched ${matched}, skipped ${unmatched}`);
+      if (data.soundcloud.playlist?.permalinkUrl) {
+        lines.push(
+          `<a href="${escapeHtml(data.soundcloud.playlist.permalinkUrl)}" target="_blank" rel="noopener noreferrer">Open on SoundCloud</a>`
+        );
+      }
+    }
+
+    exportResult.innerHTML = lines.join("<br>");
     exportResult.classList.remove("hidden");
-    showToast("Playlist saved!");
+    showToast(applyTo === "soundcloud" ? "Applied to SoundCloud!" : "Playlist saved!");
     planModal.classList.add("hidden");
     updateCreditsFromResponse(data);
   } catch (err) {
@@ -400,6 +445,7 @@ async function runExport() {
     showToast(err.message, true);
   } finally {
     exportBtn.disabled = false;
+    applySoundCloudBtn.disabled = false;
     copyCsvBtn.disabled = false;
   }
 }
@@ -435,6 +481,11 @@ async function loadConnections() {
   connectionsPanel.innerHTML = '<p class="muted">Loading…</p>';
   try {
     const data = await api("/api/connections");
+    const soundcloud = (data.connections || []).find(
+      (connection) => connection.provider === "soundcloud"
+    );
+    soundcloudConnected = Boolean(soundcloud?.connected && soundcloud?.available);
+    updatePlanActions();
     renderConnectionsPanel(data.connections || []);
   } catch (err) {
     connectionsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
@@ -496,6 +547,7 @@ async function connectProvider(provider) {
     }
     showToast("Connected!");
     await loadConnections();
+    await refreshConnectionState();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -509,6 +561,7 @@ async function disconnectProvider(provider) {
     });
     showToast("Disconnected");
     await loadConnections();
+    await refreshConnectionState();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -533,7 +586,8 @@ async function loadPlaylists() {
         (p) => `
       <div class="playlist-item">
         <strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${p.tracks} tracks${p.description ? ` · ${escapeHtml(p.description)}` : ""}</div>
+        <div class="muted">${p.tracks} tracks${p.description ? ` · ${escapeHtml(p.description)}` : ""}${p.provider === "soundcloud" ? " · SoundCloud" : ""}</div>
+        ${p.externalPlaylistUrl ? `<a class="playlist-link" href="${escapeHtml(p.externalPlaylistUrl)}" target="_blank" rel="noopener noreferrer">Open on SoundCloud</a>` : ""}
         <button class="btn btn-ghost copy-playlist-btn" data-id="${p.id}" type="button">Copy CSV</button>
       </div>`
       )
@@ -631,7 +685,8 @@ chatForm.addEventListener("submit", (e) => {
   sendMessage(text);
 });
 
-exportBtn.addEventListener("click", runExport);
+exportBtn.addEventListener("click", () => runExport());
+applySoundCloudBtn?.addEventListener("click", () => runExport({ applyTo: "soundcloud" }));
 copyCsvBtn.addEventListener("click", copyCsv);
 dismissPlan.addEventListener("click", () => planModal.classList.add("hidden"));
 refreshPlaylists.addEventListener("click", loadPlaylists);
