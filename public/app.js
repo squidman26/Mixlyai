@@ -18,6 +18,9 @@ const app = document.getElementById("app");
 const gateForm = document.getElementById("gateForm");
 const gateCode = document.getElementById("gateCode");
 const gateError = document.getElementById("gateError");
+const chatLock = document.getElementById("chatLock");
+const chatLockLoginBtn = document.getElementById("chatLockLoginBtn");
+const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
 let messages = [];
 let currentPlan = null;
@@ -113,7 +116,34 @@ async function logout() {
   await api("/api/auth/logout", { method: "POST" });
   authenticated = false;
   renderAuth(null);
+  lockChat();
   showToast("Logged out");
+}
+
+function lockChat() {
+  chatLock.classList.remove("hidden");
+  chatMessage.disabled = true;
+  chatSubmitBtn.disabled = true;
+  messages = [];
+  chatStarted = false;
+  chatLog.innerHTML = "";
+  currentPlan = null;
+  planModal.classList.add("hidden");
+}
+
+async function unlockAndStartChat() {
+  chatLock.classList.add("hidden");
+  chatMessage.disabled = false;
+  chatSubmitBtn.disabled = false;
+  await startChat();
+}
+
+async function syncChatWithAuth(isAuthed) {
+  if (isAuthed) {
+    await unlockAndStartChat();
+  } else {
+    lockChat();
+  }
 }
 
 async function startChat() {
@@ -144,6 +174,11 @@ async function startChat() {
 }
 
 async function sendMessage(text) {
+  if (!authenticated) {
+    showToast("Connect Spotify first", true);
+    return;
+  }
+
   messages.push({ role: "user", content: text });
   addMessage("user", text);
   chatMessage.disabled = true;
@@ -278,6 +313,7 @@ dismissPlan.addEventListener("click", () => planModal.classList.add("hidden"));
 refreshPlaylists.addEventListener("click", loadPlaylists);
 
 loginBtn?.addEventListener("click", goToSpotifyLogin);
+chatLockLoginBtn?.addEventListener("click", goToSpotifyLogin);
 
 function showApp() {
   gate.classList.add("hidden");
@@ -313,7 +349,7 @@ gateForm.addEventListener("submit", async (e) => {
     gateCode.value = "";
     showApp();
     await checkAuth();
-    await startChat();
+    await syncChatWithAuth(authenticated);
   } catch (err) {
     gateError.textContent = err.message || "Invalid access code";
     gateError.classList.remove("hidden");
@@ -359,7 +395,7 @@ gateForm.addEventListener("submit", async (e) => {
       history.replaceState({}, "", window.location.pathname);
     }
     await checkAuth();
-    await startChat();
+    await syncChatWithAuth(authenticated);
     return;
   }
 
@@ -380,5 +416,5 @@ gateForm.addEventListener("submit", async (e) => {
   }
 
   await checkAuth();
-  await startChat();
+  await syncChatWithAuth(authenticated);
 })();

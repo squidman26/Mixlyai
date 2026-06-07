@@ -6,7 +6,13 @@ import {
   formatPlanSummary,
 } from "../src/plan.js";
 import { getUserPlaylists } from "../lib/spotify.js";
-import { getSession, json, readJsonBody, requireMethod } from "../lib/api.js";
+import {
+  getSession,
+  json,
+  readJsonBody,
+  requireMethod,
+  requireSpotifySession,
+} from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
 
 export default async function handler(req, res) {
@@ -14,6 +20,8 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
+  if (!requireSpotifySession(req, res, session)) return;
+
   let playlists = [];
 
   if (session?.refresh_token) {
