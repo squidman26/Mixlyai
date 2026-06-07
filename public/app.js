@@ -448,10 +448,17 @@ function renderConnectionsPanel(connections) {
         ? `<span class="connection-status connected">Connected${connection.displayName ? ` as ${escapeHtml(connection.displayName)}` : ""}</span>`
         : '<span class="connection-status">Not connected</span>';
 
+      const connectClass =
+        connection.provider === "youtube"
+          ? "btn btn-youtube"
+          : connection.provider === "soundcloud"
+            ? "btn btn-soundcloud"
+            : "btn btn-primary";
+
       const action = connection.connected
         ? `<button class="btn btn-ghost disconnect-btn" data-provider="${connection.provider}" type="button">Disconnect</button>`
         : connection.available
-          ? `<button class="btn btn-primary connect-btn" data-provider="${connection.provider}" type="button">Connect</button>`
+          ? `<button class="${connectClass} connect-btn" data-provider="${connection.provider}" type="button">Connect</button>`
           : `<span class="muted coming-soon">Coming soon</span>`;
 
       return `
