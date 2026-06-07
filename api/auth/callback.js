@@ -1,4 +1,5 @@
 import { upsertAccountFromSpotifyUser } from "../../lib/accounts.js";
+import { ensureAccountCredits } from "../../lib/credits.js";
 import { getBaseUrl, getRedirectUri } from "../../lib/config.js";
 import { exchangeCode } from "../../lib/spotify.js";
 import {
@@ -43,8 +44,9 @@ export default async function handler(req, res) {
 
     let supabaseWarning = null;
     try {
-      const account = await upsertAccountFromSpotifyUser(session.user);
+      let account = await upsertAccountFromSpotifyUser(session.user);
       if (account?.id) {
+        account = await ensureAccountCredits(session.user, account);
         session.accountId = account.id;
         session.supabaseSyncedAt = Date.now();
       }

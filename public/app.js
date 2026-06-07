@@ -184,7 +184,28 @@ function renderCreditsPanel(data) {
       </div>
     </div>
     <div class="tier-grid">${tierCards}</div>
-    <p class="credits-note">Paid plans are processed securely through Square. Credits refresh to your tier allowance after purchase.</p>`;
+    <p class="credits-note">Paid plans are processed securely through Square. Credits refresh to your tier allowance after purchase.</p>
+    <div class="credit-history" id="creditHistory"></div>`;
+
+  const history = document.getElementById("creditHistory");
+  if (data.transactions?.length) {
+    history.innerHTML = `
+      <h4>Recent activity</h4>
+      <div class="credit-history-list">
+        ${data.transactions
+          .map((tx) => {
+            const sign = tx.amount >= 0 ? "+" : "";
+            const label = tx.reason.replaceAll("_", " ");
+            return `<div class="credit-history-item">
+              <span>${escapeHtml(label)}</span>
+              <span>${sign}${tx.amount}${tx.balance_after != null ? ` · ${tx.balance_after} left` : ""}</span>
+            </div>`;
+          })
+          .join("")}
+      </div>`;
+  } else {
+    history.innerHTML = "";
+  }
 
   creditsPanel.querySelectorAll(".buy-tier-btn").forEach((btn) => {
     btn.addEventListener("click", () => startCheckout(btn.dataset.tier));

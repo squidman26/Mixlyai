@@ -68,9 +68,29 @@ create index if not exists idx_credit_purchases_square_order_id
 
 alter table public.credit_purchases enable row level security;
 
+create table if not exists public.credit_transactions (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  amount integer not null,
+  balance_after integer,
+  reason text not null,
+  reference_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_credit_transactions_account_id
+  on public.credit_transactions(account_id);
+
+create index if not exists idx_credit_transactions_created_at
+  on public.credit_transactions(created_at desc);
+
+alter table public.credit_transactions enable row level security;
+
 grant usage on schema public to postgres, service_role;
 grant select, insert, update, delete on public.accounts to service_role;
 grant select, insert, update, delete on public.generated_playlists to service_role;
 grant select, insert, update, delete on public.credit_purchases to service_role;
+grant select, insert, update, delete on public.credit_transactions to service_role;
 
 notify pgrst, 'reload schema';

@@ -45,7 +45,7 @@ async function listAccounts() {
 
   const { data, error } = await supabase
     .from("accounts")
-    .select("id, spotify_id, display_name, email, product, last_login_at")
+    .select("id, spotify_id, display_name, email, product, credits, tier, unlimited_credits, last_login_at")
     .order("last_login_at", { ascending: false })
     .limit(20);
 
@@ -68,8 +68,11 @@ async function listAccounts() {
   }
 
   for (const row of data) {
+    const creditsLabel = row.unlimited_credits
+      ? "unlimited"
+      : `${row.credits ?? "?"} credits`;
     console.log(
-      `- ${row.display_name || "Unknown"} (${row.spotify_id}) last_login=${row.last_login_at}`
+      `- ${row.display_name || "Unknown"} (${row.spotify_id}) tier=${row.tier || "free"} ${creditsLabel} last_login=${row.last_login_at}`
     );
   }
 }

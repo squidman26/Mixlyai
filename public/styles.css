@@ -616,6 +616,33 @@ body {
   color: var(--muted);
 }
 
+.credit-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.credit-history h4 {
+  font-size: 0.95rem;
+}
+
+.credit-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.credit-history-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
 @media (max-width: 768px) {
   .layout {
     grid-template-columns: 1fr;
