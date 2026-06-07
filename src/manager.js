@@ -7,13 +7,15 @@ import {
   getAllPlaylistTrackUris,
   replacePlaylistTracks,
   updatePlaylist,
-} from "./spotify.js";
+} from "./music-cli.js";
+import { playlistUrl } from "../lib/music.js";
 
 export async function runMatchAndApply(rows, opts, apply) {
-  console.log(`\nMatching ${rows.length} track(s) on Spotify...\n`);
+  console.log(`\nMatching ${rows.length} track(s) on ${opts.provider}...\n`);
 
   const { matched, skipped } = await matchRowsFromCsv(rows, {
     includeAmbiguous: opts.includeAmbiguous,
+    provider: opts.provider,
   });
   printMatchSummary(matched, skipped, rows);
 
@@ -38,13 +40,14 @@ export async function applyCreatePlan(plan, opts) {
 
   await runMatchAndApply(rows, opts, async (uris) => {
     const playlist = await createPlaylist(
+      opts.provider,
       meta.name || "New Playlist",
-      meta.description ?? "Created with playlist-builder",
+      meta.description ?? "Created with MixlyAI",
       Boolean(meta.public)
     );
-    await addTracksToPlaylist(playlist.id, uris);
+    await addTracksToPlaylist(opts.provider, playlist.id, uris);
     console.log(`\nPlaylist created: ${playlist.name}`);
-    console.log(playlist.external_urls.spotify);
+    console.log(playlistUrl(playlist));
   });
 }
 
@@ -55,13 +58,13 @@ export async function applyEditPlan(plan, opts) {
     throw new Error("Edit plan needs playlist.url or playlist.id");
   }
 
-  const playlistId = parsePlaylistId(playlistRef);
-  const playlist = await getPlaylist(playlistId);
+  const playlistId = parsePlaylistId(playlistRef, opts.provider);
+  const playlist = await getPlaylist(opts.provider, playlistId);
   console.log(`\nPlaylist: ${playlist.name}`);
 
   if (meta.name || meta.description !== undefined || meta.public !== undefined) {
     if (!opts.dryRun) {
-      await updatePlaylist(playlistId, {
+      await updatePlaylist(opts.provider, playlistId, {
         name: meta.name,
         description: meta.description,
         public: meta.public,
@@ -81,7 +84,7 @@ export async function applyEditPlan(plan, opts) {
 
   await runMatchAndApply(rows, opts, async (uris) => {
     if (mode === "sync") {
-      const existing = await getAllPlaylistTrackUris(playlistId);
+      const existing = await getAllPlaylistTrackUris(opts.provider, playlistId);
       const same =
         existing.length === uris.length &&
         existing.every((uri, i) => uri === uris[i]);
@@ -89,25 +92,27 @@ export async function applyEditPlan(plan, opts) {
       if (same) {
         console.log("\nPlaylist already matches — no track changes needed.");
       } else {
-        await replacePlaylistTracks(playlistId, uris);
+        await replacePlaylistTracks(opts.provider, playlistId, uris);
         console.log(
           `\nSynced ${uris.length} tracks (was ${existing.length} tracks).`
         );
       }
     } else {
-      const existing = new Set(await getAllPlaylistTrackUris(playlistId));
+      const existing = new Set(
+        await getAllPlaylistTrackUris(opts.provider, playlistId)
+      );
       const newUris = uris.filter((uri) => !existing.has(uri));
 
       if (newUris.length === 0) {
         console.log("\nAll matched tracks are already on the playlist.");
       } else {
-        await addTracksToPlaylist(playlistId, newUris);
+        await addTracksToPlaylist(opts.provider, playlistId, newUris);
         console.log(`\nAdded ${newUris.length} new track(s).`);
       }
     }
 
-    const updated = await getPlaylist(playlistId);
-    console.log(updated.external_urls.spotify);
+    const updated = await getPlaylist(opts.provider, playlistId);
+    console.log(playlistUrl(updated));
   });
 }
 

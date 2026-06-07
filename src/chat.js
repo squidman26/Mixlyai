@@ -1,6 +1,7 @@
 import { createInterface } from "readline/promises";
 import { stdin as input, stdout as output } from "process";
-import { loadTokens } from "./config.js";
+import fs from "fs";
+import path from "path";
 import { chat } from "./claude.js";
 import { buildSystemPrompt } from "./prompt.js";
 import {
@@ -9,21 +10,35 @@ import {
   formatPlanSummary,
 } from "./plan.js";
 import { applyPlan } from "./manager.js";
-import { getUserPlaylists } from "./spotify.js";
+import { getUserPlaylists } from "./music-cli.js";
+import { getProviderName } from "../lib/music.js";
 
-async function loadPlaylistContext() {
-  if (!loadTokens()) return [];
+const TOKEN_FILE = path.join(process.cwd(), ".mixlyai-tokens.json");
+
+function hasTokens(provider) {
+  if (!fs.existsSync(TOKEN_FILE)) return false;
   try {
-    return await getUserPlaylists(30);
+    const tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf8"));
+    return tokens.provider === provider;
+  } catch {
+    return false;
+  }
+}
+
+async function loadPlaylistContext(provider) {
+  if (!hasTokens(provider)) return [];
+  try {
+    return await getUserPlaylists(provider, 30);
   } catch {
     return [];
   }
 }
 
-async function promptApply(rl, plan, { defaultAction } = {}) {
+async function promptApply(rl, plan, provider, { defaultAction } = {}) {
+  const providerName = getProviderName(provider);
   console.log("\n── Playlist ready ──");
   console.log(formatPlanSummary(plan));
-  console.log("\n[y] Apply to Spotify  [d] Dry run (match only)  [n] Keep chatting");
+  console.log(`\n[y] Apply to ${providerName}  [d] Dry run (match only)  [n] Keep chatting`);
 
   const raw = (await rl.question(defaultAction ? `> [${defaultAction}] ` : "> "))
     .trim()
@@ -35,12 +50,13 @@ async function promptApply(rl, plan, { defaultAction } = {}) {
     return { exit: false };
   }
 
-  if (!loadTokens()) {
-    console.error("\nNot logged in to Spotify. Run: npm run auth\n");
+  if (!hasTokens(provider)) {
+    console.error(`\nNot logged in to ${providerName}. Run: npm run auth -- --provider ${provider}\n`);
     return { exit: false };
   }
 
   const opts = {
+    provider,
     dryRun: answer === "d" || answer === "dry" || answer === "dry-run",
     includeAmbiguous: false,
   };
@@ -60,22 +76,23 @@ async function promptApply(rl, plan, { defaultAction } = {}) {
     }
     return { exit: true, plan };
   } catch (err) {
-    console.error(`\nSpotify error: ${err.message}\n`);
+    console.error(`\nError: ${err.message}\n`);
     return { exit: false, plan };
   }
 }
 
-export async function runChat() {
+export async function runChat(provider = "youtube") {
   const rl = createInterface({ input, output });
+  const providerName = getProviderName(provider);
 
-  console.log("Playlist Builder — chat mode");
-  console.log("Design a playlist with Claude, then apply it to Spotify.\n");
+  console.log("MixlyAI — chat mode");
+  console.log(`Design a playlist with Claude, then apply it to ${providerName}.\n`);
   console.log(
     "Commands: /quit  /apply (re-run last playlist — apply or dry run again)\n"
   );
 
-  const playlists = await loadPlaylistContext();
-  const systemPrompt = buildSystemPrompt({ playlists });
+  const playlists = await loadPlaylistContext(provider);
+  const systemPrompt = buildSystemPrompt({ playlists, provider });
 
   const messages = [];
   let lastAssistantText = "";
@@ -98,7 +115,7 @@ export async function runChat() {
   const openingPlan = extractPlanFromMessage(opening);
   if (openingPlan) {
     lastPlan = openingPlan;
-    const { exit } = await promptApply(rl, openingPlan);
+    const { exit } = await promptApply(rl, openingPlan, provider);
     if (exit) {
       rl.close();
       return;
@@ -120,7 +137,7 @@ export async function runChat() {
         );
         continue;
       }
-      const { exit } = await promptApply(rl, plan, { defaultAction: "y" });
+      const { exit } = await promptApply(rl, plan, provider, { defaultAction: "y" });
       if (exit) break;
       continue;
     }
@@ -137,7 +154,7 @@ export async function runChat() {
     const plan = extractPlanFromMessage(reply);
     if (plan) {
       lastPlan = plan;
-      const { exit } = await promptApply(rl, plan);
+      const { exit } = await promptApply(rl, plan, provider);
       if (exit) break;
       console.log("");
     } else {

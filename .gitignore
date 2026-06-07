@@ -1,6 +1,6 @@
 node_modules/
 .env
 .env.local
-.spotify-tokens.json
+.mixlyai-tokens.json
 *.log
 .vercel

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Check whether Spotify users have been saved to Supabase accounts.
+ * Check whether music-service users have been saved to Supabase accounts.
  *
  * Usage:
  *   SUPABASE_SECRET_KEY=sb_secret_... node scripts/check-accounts.mjs
@@ -20,7 +20,7 @@ const SECRET_KEY =
   process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const PRODUCTION_URL =
-  process.env.APP_BASE_URL || "https://spotifybot-eight.vercel.app";
+  process.env.APP_BASE_URL || "https://mixlyai.vercel.app";
 
 async function checkProductionHealth() {
   const res = await fetch(`${PRODUCTION_URL}/api/health/supabase`);
@@ -45,7 +45,7 @@ async function listAccounts() {
 
   const { data, error } = await supabase
     .from("accounts")
-    .select("id, spotify_id, display_name, email, product, credits, tier, unlimited_credits, last_login_at")
+    .select("id, provider, external_id, display_name, email, product, credits, tier, unlimited_credits, last_login_at")
     .order("last_login_at", { ascending: false })
     .limit(20);
 
@@ -63,7 +63,7 @@ async function listAccounts() {
 
   console.log(`\nAccounts logged in: ${data.length}`);
   if (data.length === 0) {
-    console.log("No Spotify logins recorded yet.");
+    console.log("No logins recorded yet.");
     return;
   }
 
@@ -72,7 +72,7 @@ async function listAccounts() {
       ? "unlimited"
       : `${row.credits ?? "?"} credits`;
     console.log(
-      `- ${row.display_name || "Unknown"} (${row.spotify_id}) tier=${row.tier || "free"} ${creditsLabel} last_login=${row.last_login_at}`
+      `- ${row.display_name || "Unknown"} (${row.provider}:${row.external_id}) tier=${row.tier || "free"} ${creditsLabel} last_login=${row.last_login_at}`
     );
   }
 }

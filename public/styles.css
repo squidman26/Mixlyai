@@ -5,8 +5,10 @@
   --border: #2a2a3a;
   --text: #f0f0f5;
   --muted: #8888a0;
-  --spotify: #1db954;
-  --spotify-hover: #1ed760;
+  --youtube: #ff0033;
+  --youtube-hover: #ff3355;
+  --soundcloud: #ff5500;
+  --soundcloud-hover: #ff7733;
   --accent: #7c5cff;
   --accent-2: #ff6b9d;
   --radius: 14px;
@@ -318,13 +320,37 @@ body {
   background: #6b4de6;
 }
 
-.btn-spotify {
-  background: var(--spotify);
-  color: #000;
+.btn-youtube {
+  background: var(--youtube);
+  color: #fff;
 }
 
-.btn-spotify:hover {
-  background: var(--spotify-hover);
+.btn-youtube:hover {
+  background: var(--youtube-hover);
+}
+
+.btn-soundcloud {
+  background: var(--soundcloud);
+  color: #fff;
+}
+
+.btn-soundcloud:hover {
+  background: var(--soundcloud-hover);
+}
+
+.login-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.provider-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .btn-ghost {
@@ -348,8 +374,8 @@ body {
 }
 
 .user-chip .badge {
-  background: var(--spotify);
-  color: #000;
+  background: var(--accent);
+  color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.15rem 0.45rem;
@@ -371,7 +397,7 @@ body {
 }
 
 .playlist-item a {
-  color: var(--spotify);
+  color: var(--accent);
   text-decoration: none;
   font-size: 0.85rem;
 }
@@ -450,7 +476,7 @@ body {
 }
 
 .apply-result a {
-  color: var(--spotify);
+  color: var(--accent);
 }
 
 .toast {

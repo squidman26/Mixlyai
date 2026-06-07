@@ -11,7 +11,7 @@ import {
   json,
   readJsonBody,
   requireMethod,
-  requireSpotifySession,
+  requireMusicSession,
 } from "../lib/api.js";
 import { getBaseUrl } from "../lib/config.js";
 import { requireAccess } from "../lib/gate.js";
@@ -21,7 +21,7 @@ import { checkSupabaseCreditSchema } from "../lib/supabase.js";
 async function getCreditsStatus(req, res) {
   const { session } = getSession(req, res);
   if (!session?.refresh_token || !session?.accountId) {
-    json(res, 401, { error: "Connect Spotify first" });
+    json(res, 401, { error: "Connect YouTube Music or SoundCloud first" });
     return;
   }
 
@@ -50,7 +50,7 @@ async function getCreditsStatus(req, res) {
 
 async function createCheckout(req, res) {
   const { session } = getSession(req, res);
-  if (!requireSpotifySession(req, res, session)) return;
+  if (!requireMusicSession(req, res, session)) return;
 
   if (!session.accountId) {
     json(res, 400, { error: "Account not synced yet. Refresh and try again." });

@@ -8,36 +8,40 @@ import {
   getPlaylist,
   updatePlaylist,
   getUserPlaylists,
-} from "./spotify.js";
+} from "./music-cli.js";
 import { runMatchAndApply, applyCreatePlan, applyEditPlan } from "./manager.js";
 import { runChat } from "./chat.js";
+import { playlistUrl } from "../lib/music.js";
 
 const program = new Command();
 
 program
-  .name("playlist-builder")
-  .description("Build and edit Spotify playlists with Claude or CSV");
+  .name("mixlyai")
+  .description("Build and edit YouTube Music or SoundCloud playlists with Claude or CSV");
 
 program
   .command("chat", { isDefault: true })
-  .description("Chat with Claude to design a playlist, then apply to Spotify")
-  .action(async () => {
-    await runChat();
+  .description("Chat with Claude to design a playlist, then apply to your music service")
+  .option("-p, --provider <provider>", "youtube or soundcloud", "youtube")
+  .action(async (opts) => {
+    await runChat(opts.provider);
   });
 
 program
   .command("auth")
-  .description("Log in to Spotify (required once)")
-  .action(async () => {
-    await login();
+  .description("Log in to YouTube Music or SoundCloud (required once per provider)")
+  .option("-p, --provider <provider>", "youtube or soundcloud", "youtube")
+  .action(async (opts) => {
+    await login(opts.provider);
   });
 
 program
   .command("list")
-  .description("List your Spotify playlists (name and ID)")
+  .description("List your playlists (name and ID)")
+  .option("-p, --provider <provider>", "youtube or soundcloud", "youtube")
   .option("-l, --limit <n>", "Max playlists to show", "50")
   .action(async (opts) => {
-    const playlists = await getUserPlaylists(Number(opts.limit));
+    const playlists = await getUserPlaylists(opts.provider, Number(opts.limit));
     if (playlists.length === 0) {
       console.log("No playlists found.");
       return;
@@ -45,7 +49,7 @@ program
     for (const p of playlists) {
       const tracks = p.tracks?.total ?? "?";
       console.log(`${p.id}  ${p.name}  (${tracks} tracks)`);
-      console.log(`  ${p.external_urls.spotify}\n`);
+      console.log(`  ${playlistUrl(p)}\n`);
     }
   });
 
@@ -54,6 +58,7 @@ program
   .description("Match CSV rows and create a new playlist")
   .requiredOption("-f, --file <path>", "CSV file path")
   .requiredOption("-n, --name <name>", "Playlist name")
+  .option("-p, --provider <provider>", "youtube or soundcloud", "youtube")
   .option("-d, --description <text>", "Playlist description")
   .option("--public", "Make playlist public", false)
   .option("--dry-run", "Match only; do not create playlist", false)
@@ -72,7 +77,7 @@ program
         playlist: {
           name: opts.name,
           description:
-            opts.description ?? `Created by playlist-builder from ${opts.file}`,
+            opts.description ?? `Created by MixlyAI from ${opts.file}`,
           public: opts.public,
         },
         _rows: rows,
@@ -85,8 +90,9 @@ program
 program
   .command("edit")
   .description("Update an existing playlist from a CSV")
-  .requiredOption("-p, --playlist <id|url>", "Playlist ID or Spotify URL")
+  .requiredOption("-p, --playlist <id|url>", "Playlist ID or URL")
   .requiredOption("-f, --file <path>", "CSV file path")
+  .option("--provider <provider>", "youtube or soundcloud", "youtube")
   .option(
     "-m, --mode <mode>",
     "sync: replace tracks to match CSV; add: append new tracks only",
@@ -103,8 +109,8 @@ program
     false
   )
   .action(async (opts) => {
-    const playlistId = parsePlaylistId(opts.playlist);
-    const playlist = await getPlaylist(playlistId);
+    const playlistId = parsePlaylistId(opts.playlist, opts.provider);
+    const playlist = await getPlaylist(opts.provider, playlistId);
     console.log(`Playlist: ${playlist.name}`);
 
     if (opts.public && opts.private) {
@@ -116,7 +122,7 @@ program
 
     if (opts.name || opts.description !== undefined || visibility !== undefined) {
       if (!opts.dryRun) {
-        await updatePlaylist(playlistId, {
+        await updatePlaylist(opts.provider, playlistId, {
           name: opts.name,
           description: opts.description,
           public: visibility,

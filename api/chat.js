@@ -5,13 +5,13 @@ import {
   stripPlanBlock,
   formatPlanSummary,
 } from "../src/plan.js";
-import { getUserPlaylists } from "../lib/spotify.js";
+import { getUserPlaylists } from "../lib/music.js";
 import {
   getSession,
   json,
   readJsonBody,
   requireMethod,
-  requireSpotifySession,
+  requireMusicSession,
   respondInsufficientCredits,
 } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
 
   const { session, save } = getSession(req, res);
-  if (!requireSpotifySession(req, res, session)) return;
+  if (!requireMusicSession(req, res, session)) return;
 
   if (!session.accountId) {
     json(res, 400, { error: "Account not synced yet. Refresh and try again." });
@@ -59,7 +59,10 @@ export default async function handler(req, res) {
       return;
     }
 
-    const systemPrompt = buildSystemPrompt({ playlists });
+    const systemPrompt = buildSystemPrompt({
+      playlists,
+      provider: session.provider,
+    });
     const reply = await chat(messages, systemPrompt);
     const plan = extractPlanFromMessage(reply);
     const visible = stripPlanBlock(reply);

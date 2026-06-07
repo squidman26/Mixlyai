@@ -1,14 +1,14 @@
 import { matchTrack, formatTrack } from "./match.js";
 
-export async function matchRowsFromCsv(rows, { includeAmbiguous }) {
+export async function matchRowsFromCsv(rows, { includeAmbiguous, provider }) {
   const matched = [];
   const skipped = [];
 
   for (const row of rows) {
-    const result = await matchTrack(row.artist, row.title);
+    const result = await matchTrack(provider, row.artist, row.title);
 
     if (result.status === "not_found") {
-      skipped.push({ ...row, reason: "not found on Spotify" });
+      skipped.push({ ...row, reason: `not found on ${provider}` });
       console.log(
         `✗  line ${row.line}: ${row.artist} — ${row.title} (not found)`
       );
