@@ -59,31 +59,6 @@ body {
   white-space: nowrap;
 }
 
-.auth-notice {
-  position: relative;
-  z-index: 1;
-  margin: 0 2rem 1rem;
-  padding: 1rem 1.25rem;
-  border-radius: var(--radius);
-  background: rgba(255, 107, 157, 0.08);
-  border: 1px solid rgba(255, 107, 157, 0.35);
-  color: var(--text);
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-
-.auth-notice a {
-  color: #c4b5fd;
-}
-
-.auth-notice ol {
-  margin: 0.75rem 0 0 1.25rem;
-}
-
-.auth-notice li + li {
-  margin-top: 0.35rem;
-}
-
 .brand {
   display: flex;
   align-items: center;

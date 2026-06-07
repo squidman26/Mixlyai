@@ -77,32 +77,6 @@ function formatAuthError(code) {
   return `Auth failed: ${code}`;
 }
 
-function isAllowlistAuthError(code) {
-  return (
-    code === "spotify_not_allowlisted" ||
-    /not registered|not approved|developer dashboard/i.test(code || "")
-  );
-}
-
-function showAllowlistHelp() {
-  if (!authNotice) return;
-  authNotice.innerHTML = `
-    <strong>Spotify account not allowlisted</strong>
-    <p>This app is in Spotify Development Mode, so only approved emails can sign in (max 5 testers).</p>
-    <ol>
-      <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify Developer Dashboard</a></li>
-      <li>Select this app → <strong>Settings</strong> → <strong>Users and Access</strong></li>
-      <li>Click <strong>Add new user</strong> and enter the email on the Spotify account you tried to use</li>
-      <li>Wait up to 15 minutes, then click Connect Spotify again</li>
-    </ol>
-    <p>For anyone to sign in, apply for <strong>Extended Quota Mode</strong> in the same dashboard.</p>`;
-  authNotice.classList.remove("hidden");
-}
-
-function hideAllowlistHelp() {
-  authNotice?.classList.add("hidden");
-}
-
 function addMessage(role, text) {
   const el = document.createElement("div");
   el.className = `msg ${role}`;
