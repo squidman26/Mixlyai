@@ -5,6 +5,7 @@ import {
   getTierDefinition,
   listCreditTransactions,
   recordPendingPurchase,
+  syncPendingPurchasesForAccount,
 } from "../lib/credits.js";
 import {
   getSession,
@@ -45,7 +46,34 @@ async function getCreditsStatus(req, res) {
   });
 }
 
-async function createCheckout(req, res) {
+async function confirmPurchase(req, res, body) {
+  const { session } = getSession(req, res);
+  if (!requireAppSession(req, res, session)) return;
+
+  const tier = getTierDefinition(body.tier);
+
+  let account = await syncPendingPurchasesForAccount(
+    session.accountId,
+    tier?.id !== "free" ? tier?.id : null
+  );
+  if (!account) {
+    json(res, 404, { error: "Account not found" });
+    return;
+  }
+
+  account = await ensureAccountCredits(null, account);
+  const transactions = await listCreditTransactions(session.accountId);
+
+  json(res, 200, {
+    ...buildCreditStatus(account, null),
+    squareConfigured: isSquareConfigured(),
+    supabaseSynced: true,
+    transactions,
+    purchaseConfirmed: true,
+  });
+}
+
+async function createCheckout(req, res, body) {
   const { session } = getSession(req, res);
   if (!requireAppSession(req, res, session)) return;
 
@@ -54,7 +82,6 @@ async function createCheckout(req, res) {
     return;
   }
 
-  const body = await readJsonBody(req);
   const tier = getTierDefinition(body.tier);
 
   if (!tier || tier.id === "free") {
@@ -96,9 +123,14 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     try {
-      await createCheckout(req, res);
+      const body = await readJsonBody(req);
+      if (body.action === "confirm") {
+        await confirmPurchase(req, res, body);
+        return;
+      }
+      await createCheckout(req, res, body);
     } catch (err) {
-      json(res, 500, { error: err.message || "Failed to create checkout" });
+      json(res, 500, { error: err.message || "Failed to process credits request" });
     }
     return;
   }

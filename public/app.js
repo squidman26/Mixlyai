@@ -969,18 +969,60 @@ authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
 
-(async function init() {
+function clearPurchaseQueryParams() {
   const params = new URLSearchParams(window.location.search);
+  if (!params.has("purchase")) return;
 
-  if (params.get("purchase") === "success") {
-    selectedPurchaseTier = null;
-    showToast("Purchase complete! Your credits are updating.");
+  params.delete("purchase");
+  params.delete("tier");
+  const nextSearch = params.toString();
+  window.history.replaceState(
+    {},
+    "",
+    `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`
+  );
+}
+
+async function handlePurchaseReturn(tierId) {
+  selectedPurchaseTier = null;
+
+  if (!authenticated) {
+    showToast("Purchase received. Sign in to apply your credits.", true);
+    openAuthModal("signin");
+    return;
+  }
+
+  try {
+    const data = await api("/api/credits", {
+      method: "POST",
+      body: JSON.stringify({ action: "confirm", tier: tierId || undefined }),
+    });
+    creditStatus = data;
+    lastCreditsPanelData = data;
+    renderAuth(currentUser, creditStatus);
+    renderCreditsPanel();
+    await syncChatAccess();
+    showToast(`Purchase complete! You now have ${data.credits?.toLocaleString?.() ?? data.tierCredits} credits.`);
+    openCreditsPanel();
+  } catch (err) {
+    showToast(err.message || "Purchase received. Refresh after signing in.", true);
     openCreditsPanel();
   }
+}
+
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const purchaseSuccess = params.get("purchase") === "success";
+  const purchaseTier = params.get("tier");
 
   setupCreditsPanelEvents();
   app.classList.remove("hidden");
   await checkAuth();
   handleYoutubeConnectionResult();
   await syncChatAccess();
+
+  if (purchaseSuccess) {
+    clearPurchaseQueryParams();
+    await handlePurchaseReturn(purchaseTier);
+  }
 })();
