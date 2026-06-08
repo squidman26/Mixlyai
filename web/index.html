@@ -14,27 +14,7 @@
 <body>
   <div class="bg-glow"></div>
 
-  <div class="gate" id="gate">
-    <div class="gate-card">
-      <div class="logo gate-logo" aria-hidden="true">♫</div>
-      <h2 class="brand-title">Mixly</h2>
-      <p class="gate-sub">Enter your access code to continue</p>
-      <form id="gateForm">
-        <input
-          id="gateCode"
-          type="password"
-          inputmode="numeric"
-          placeholder="Access code"
-          autocomplete="off"
-          required
-        />
-        <button class="btn btn-primary gate-btn" type="submit">Unlock</button>
-      </form>
-      <p class="gate-error hidden" id="gateError"></p>
-    </div>
-  </div>
-
-  <div class="app hidden" id="app">
+  <div class="app" id="app">
     <aside class="sidebar" aria-label="Navigation">
       <div class="sidebar-brand">
         <div class="logo" aria-hidden="true">♫</div>
@@ -194,10 +174,11 @@
       <div class="auth-card">
         <button class="auth-close" id="closeAuthModal" type="button" aria-label="Close">×</button>
         <h3 id="authModalTitle">Sign in</h3>
-        <div class="auth-tabs">
+        <div class="auth-tabs hidden" id="authTabs">
           <button class="auth-tab active" id="authTabSignIn" type="button">Sign in</button>
-          <button class="auth-tab" id="authTabSignUp" type="button">Sign up</button>
+          <button class="auth-tab hidden" id="authTabSignUp" type="button" hidden>Sign up</button>
         </div>
+        <p class="auth-note muted" id="signUpDisabledNote">New account creation is temporarily disabled.</p>
         <form class="auth-form" id="signInForm">
           <input id="signInLogin" type="text" placeholder="Email or username" autocomplete="username" required />
           <input id="signInPassword" type="password" placeholder="Password" autocomplete="current-password" required />

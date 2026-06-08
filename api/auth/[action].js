@@ -1,5 +1,5 @@
 import { getAccountById } from "../../lib/accounts.js";
-import { signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
+import { areSignupsEnabled, signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { getCanonicalBaseUrl } from "../../lib/config.js";
 import { upsertYoutubeConnection } from "../../lib/connections.js";
@@ -17,6 +17,11 @@ import { isSquareConfigured } from "../../lib/square.js";
 
 async function handleSignup(req, res) {
   if (!requireMethod(req, res, "POST")) return;
+
+  if (!areSignupsEnabled()) {
+    json(res, 403, { error: "New account creation is temporarily disabled." });
+    return;
+  }
 
   try {
     const body = await readJsonBody(req);
@@ -121,6 +126,7 @@ async function handleStatus(req, res) {
         accountId: session.accountId,
       },
       credits: account ? buildCreditStatus(account, null) : null,
+      signupsEnabled: areSignupsEnabled(),
       squareConfigured: isSquareConfigured(),
       supabase: {
         synced: Boolean(session.accountId),
@@ -136,6 +142,7 @@ function handleInfo(req, res) {
   if (!requireMethod(req, res, "GET")) return;
   json(res, 200, {
     canonicalBaseUrl: getCanonicalBaseUrl(),
+    signupsEnabled: areSignupsEnabled(),
     ...getSupabasePublicConfig(),
   });
 }

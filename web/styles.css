@@ -1040,6 +1040,12 @@ body {
   margin-top: 0.25rem;
 }
 
+.auth-note {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .auth-error {
   color: #c084fc;
   font-size: 0.85rem;
