@@ -48,9 +48,18 @@ body {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100vh;
   height: 100dvh;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ── Header ── */
@@ -87,6 +96,27 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem 1.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-page {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-brand-mobile {
+  display: none;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .logo {
@@ -129,22 +159,17 @@ body {
   margin-bottom: 0.35rem;
 }
 
-/* ── Body: sidebar + main ── */
-
-.app-body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-  overflow: hidden;
-}
+/* ── Sidebar (left rail) ── */
 
 .sidebar {
   flex-shrink: 0;
   width: var(--sidebar-w);
+  height: 100%;
   display: flex;
   flex-direction: column;
+  order: -1;
   border-right: 1px solid var(--border);
-  background: rgba(10, 10, 15, 0.65);
+  background: rgba(10, 10, 15, 0.85);
   padding: 1.25rem 0.75rem;
 }
 
@@ -197,7 +222,7 @@ body {
 .tool-btn.active::before {
   content: "";
   position: absolute;
-  left: -0.75rem;
+  left: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
@@ -953,8 +978,16 @@ body {
     overflow: hidden;
   }
 
+  .app {
+    flex-direction: column;
+  }
+
   .header {
     padding: 0 1rem;
+  }
+
+  .header-brand-mobile {
+    display: flex;
   }
 
   .brand-tagline {

@@ -15,49 +15,53 @@
   <div class="bg-glow"></div>
 
   <div class="app" id="app">
-    <header class="header">
-      <div class="brand">
+    <aside class="sidebar" aria-label="Navigation">
+      <div class="sidebar-brand">
         <div class="logo" aria-hidden="true">♫</div>
-        <div class="brand-text">
-          <span class="brand-title">Mixly</span>
+        <span class="brand-title">Mixly</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="tool-btn active" data-panel="chat" type="button">
+          <span class="tool-icon">💬</span>
+          <span class="tool-label">Chat Curator</span>
+        </button>
+        <button class="tool-btn" data-panel="playlists" type="button">
+          <span class="tool-icon">📋</span>
+          <span class="tool-label">Saved Playlists</span>
+        </button>
+        <button class="tool-btn" data-panel="connections" type="button">
+          <span class="tool-icon">🔗</span>
+          <span class="tool-label">Connections</span>
+        </button>
+        <button class="tool-btn" data-panel="credits" type="button">
+          <span class="tool-icon">⚡</span>
+          <span class="tool-label">Credits & Plans</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <p>Chat is free. Saving playlists costs credits.</p>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="header">
+        <div class="header-page">
+          <div class="header-brand-mobile">
+            <div class="logo" aria-hidden="true">♫</div>
+            <span class="brand-title">Mixly</span>
+          </div>
           <span class="brand-tagline">AI playlist curator</span>
         </div>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-ghost header-credits-btn" id="headerCreditsBtn" type="button">
-          <span class="header-credits-icon">⚡</span>
-          <span class="header-credits-label">Credits</span>
-        </button>
-        <div class="auth-area" id="authArea">
-          <button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>
+        <div class="header-actions">
+          <button class="btn btn-ghost header-credits-btn" id="headerCreditsBtn" type="button">
+            <span class="header-credits-icon">⚡</span>
+            <span class="header-credits-label">Credits</span>
+          </button>
+          <div class="auth-area" id="authArea">
+            <button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>
+          </div>
         </div>
-      </div>
-    </header>
-
-    <div class="app-body">
-      <aside class="sidebar" aria-label="Navigation">
-        <nav class="sidebar-nav">
-          <button class="tool-btn active" data-panel="chat" type="button">
-            <span class="tool-icon">💬</span>
-            <span class="tool-label">Chat Curator</span>
-          </button>
-          <button class="tool-btn" data-panel="playlists" type="button">
-            <span class="tool-icon">📋</span>
-            <span class="tool-label">Saved Playlists</span>
-          </button>
-          <button class="tool-btn" data-panel="connections" type="button">
-            <span class="tool-icon">🔗</span>
-            <span class="tool-label">Connections</span>
-          </button>
-          <button class="tool-btn" data-panel="credits" type="button">
-            <span class="tool-icon">⚡</span>
-            <span class="tool-label">Credits & Plans</span>
-          </button>
-        </nav>
-        <div class="sidebar-footer">
-          <p>Chat is free. Saving playlists costs credits.</p>
-        </div>
-      </aside>
+      </header>
 
       <main class="main">
         <section class="panel active" id="panel-chat">
