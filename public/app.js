@@ -731,16 +731,19 @@ async function handleSignUp(e) {
   }
 }
 
-document.querySelectorAll(".tool-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tool-btn").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
-    if (btn.dataset.panel === "playlists") loadPlaylists();
-    if (btn.dataset.panel === "connections") loadConnections();
-    if (btn.dataset.panel === "credits") loadCredits();
+function switchPanel(panelName) {
+  document.querySelectorAll(".tool-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.panel === panelName);
   });
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  document.getElementById(`panel-${panelName}`)?.classList.add("active");
+  if (panelName === "playlists") loadPlaylists();
+  if (panelName === "connections") loadConnections();
+  if (panelName === "credits") loadCredits();
+}
+
+document.querySelectorAll(".tool-btn").forEach((btn) => {
+  btn.addEventListener("click", () => switchPanel(btn.dataset.panel));
 });
 
 chatForm.addEventListener("submit", (e) => {

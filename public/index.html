@@ -15,139 +15,191 @@
   <div class="bg-glow"></div>
 
   <div class="app" id="app">
-  <header class="header">
-    <div class="brand">
-      <div class="logo" aria-hidden="true">♫</div>
-      <span class="brand-title">Mixly</span>
-    </div>
-    <div class="header-actions">
-      <button class="btn btn-ghost header-credits-btn" id="headerCreditsBtn" type="button">
-        ⚡ Credits & Plans
-      </button>
-      <div class="auth-area" id="authArea">
-        <button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">♫</div>
+        <div class="brand-text">
+          <span class="brand-title">Mixly</span>
+          <span class="brand-tagline">AI playlist curator</span>
+        </div>
       </div>
-    </div>
-  </header>
+      <div class="header-actions">
+        <button class="btn btn-ghost header-credits-btn" id="headerCreditsBtn" type="button">
+          <span class="header-credits-icon">⚡</span>
+          <span class="header-credits-label">Credits</span>
+        </button>
+        <div class="auth-area" id="authArea">
+          <button class="btn btn-primary" id="openAuthBtn" type="button">Sign in</button>
+        </div>
+      </div>
+    </header>
 
-  <main class="layout">
-    <aside class="tools">
-      <h2>Tools</h2>
+    <div class="app-body">
+      <aside class="sidebar" aria-label="Navigation">
+        <nav class="sidebar-nav">
+          <button class="tool-btn active" data-panel="chat" type="button">
+            <span class="tool-icon">💬</span>
+            <span class="tool-label">Chat Curator</span>
+          </button>
+          <button class="tool-btn" data-panel="playlists" type="button">
+            <span class="tool-icon">📋</span>
+            <span class="tool-label">Saved Playlists</span>
+          </button>
+          <button class="tool-btn" data-panel="connections" type="button">
+            <span class="tool-icon">🔗</span>
+            <span class="tool-label">Connections</span>
+          </button>
+          <button class="tool-btn" data-panel="credits" type="button">
+            <span class="tool-icon">⚡</span>
+            <span class="tool-label">Credits & Plans</span>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <p>Chat is free. Saving playlists costs credits.</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="panel active" id="panel-chat">
+          <div class="panel-header">
+            <div>
+              <h1>Chat Curator</h1>
+              <p class="panel-desc">Describe your vibe and let Claude build the perfect playlist.</p>
+            </div>
+          </div>
+          <div class="panel-content panel-content--flush">
+            <div class="chat-shell is-locked" id="chatShell">
+              <div class="chat-lock" id="chatLock">
+                <div class="chat-lock-card">
+                  <p id="chatLockMessage">Sign in to chat with the playlist curator.</p>
+                  <button class="btn btn-primary" id="chatLockActionBtn" type="button">Sign in or create account</button>
+                </div>
+              </div>
+              <div class="chat" id="chatLog"></div>
+              <form class="chat-input" id="chatForm">
+                <input
+                  id="chatMessage"
+                  type="text"
+                  placeholder="Describe your vibe, genre, or playlist idea…"
+                  autocomplete="off"
+                  disabled
+                />
+                <button class="btn btn-primary" type="submit" disabled>Send</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-playlists">
+          <div class="panel-header">
+            <div>
+              <h1>Saved Playlists</h1>
+              <p class="panel-desc">Playlists you've saved and exported from chat.</p>
+            </div>
+            <button class="btn btn-ghost" id="refreshPlaylists" type="button">Refresh</button>
+          </div>
+          <div class="panel-content">
+            <div class="playlist-list" id="playlistList">
+              <p class="muted">Sign in to see playlists you save here.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-connections">
+          <div class="panel-header">
+            <div>
+              <h1>Connections</h1>
+              <p class="panel-desc">Link your music services to export playlists directly.</p>
+            </div>
+          </div>
+          <div class="panel-content">
+            <div class="connections-panel" id="connectionsPanel">
+              <p class="muted">Sign in to manage your connected music services.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-credits">
+          <div class="panel-header">
+            <div>
+              <h1>Credits & Plans</h1>
+              <p class="panel-desc">Manage your balance and upgrade your plan.</p>
+            </div>
+            <a
+              class="btn btn-primary square-link-btn"
+              href="https://squareup.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Pay with Square</a>
+          </div>
+          <div class="panel-content">
+            <div class="credits-panel" id="creditsPanel">
+              <p class="muted">Sign in to view your credit balance.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <nav class="mobile-nav" aria-label="Mobile navigation">
       <button class="tool-btn active" data-panel="chat" type="button">
         <span class="tool-icon">💬</span>
-        Chat Curator
+        <span class="tool-label">Chat</span>
       </button>
       <button class="tool-btn" data-panel="playlists" type="button">
         <span class="tool-icon">📋</span>
-        Saved Playlists
+        <span class="tool-label">Playlists</span>
       </button>
       <button class="tool-btn" data-panel="connections" type="button">
         <span class="tool-icon">🔗</span>
-        Connections
+        <span class="tool-label">Connect</span>
       </button>
       <button class="tool-btn" data-panel="credits" type="button">
         <span class="tool-icon">⚡</span>
-        Credits
+        <span class="tool-label">Credits</span>
       </button>
-    </aside>
+    </nav>
 
-    <section class="panel active" id="panel-chat">
-      <div class="chat-shell is-locked" id="chatShell">
-        <div class="chat-lock" id="chatLock">
-          <div class="chat-lock-card">
-            <p id="chatLockMessage">Sign in to chat with the playlist curator.</p>
-            <button class="btn btn-primary" id="chatLockActionBtn" type="button">Sign in or create account</button>
-          </div>
+    <div class="plan-modal hidden" id="planModal">
+      <div class="plan-card">
+        <h3>Playlist ready</h3>
+        <pre id="planSummary"></pre>
+        <div class="plan-actions">
+          <button class="btn btn-primary" id="exportBtn" type="button">Save & export</button>
+          <button class="btn btn-primary hidden" id="applyYoutubeBtn" type="button">Apply to YouTube</button>
+          <button class="btn btn-primary hidden" id="connectYoutubeBtn" type="button">Connect YouTube</button>
+          <button class="btn btn-ghost" id="copyCsvBtn" type="button">Copy CSV</button>
+          <button class="btn btn-ghost" id="dismissPlan" type="button">Keep chatting</button>
         </div>
-        <div class="chat" id="chatLog"></div>
-        <form class="chat-input" id="chatForm">
-          <input
-            id="chatMessage"
-            type="text"
-            placeholder="Describe your vibe, genre, or playlist idea…"
-            autocomplete="off"
-            disabled
-          />
-          <button class="btn btn-primary" type="submit" disabled>Send</button>
+        <div class="export-result hidden" id="exportResult"></div>
+      </div>
+    </div>
+
+    <div class="auth-modal hidden" id="authModal">
+      <div class="auth-card">
+        <button class="auth-close" id="closeAuthModal" type="button" aria-label="Close">×</button>
+        <h3 id="authModalTitle">Sign in</h3>
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="authTabSignIn" type="button">Sign in</button>
+          <button class="auth-tab" id="authTabSignUp" type="button">Sign up</button>
+        </div>
+        <form class="auth-form" id="signInForm">
+          <input id="signInLogin" type="text" placeholder="Email or username" autocomplete="username" required />
+          <input id="signInPassword" type="password" placeholder="Password" autocomplete="current-password" required />
+          <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+          <p class="auth-error hidden" id="signInError"></p>
+        </form>
+        <form class="auth-form hidden" id="signUpForm">
+          <input id="signUpEmail" type="email" placeholder="Email" autocomplete="email" required />
+          <input id="signUpUsername" type="text" placeholder="Username" autocomplete="username" required />
+          <input id="signUpPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required />
+          <button class="btn btn-primary auth-submit" type="submit">Create account</button>
+          <p class="auth-error hidden" id="signUpError"></p>
         </form>
       </div>
-    </section>
-
-    <section class="panel" id="panel-playlists">
-      <div class="panel-head">
-        <h2>Saved Playlists</h2>
-        <button class="btn btn-ghost" id="refreshPlaylists" type="button">Refresh</button>
-      </div>
-      <div class="playlist-list" id="playlistList">
-        <p class="muted">Sign in to see playlists you save here.</p>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-connections">
-      <div class="panel-head">
-        <h2>Connections</h2>
-      </div>
-      <div class="connections-panel" id="connectionsPanel">
-        <p class="muted">Sign in to manage your connected music services.</p>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-credits">
-      <div class="panel-head">
-        <h2>Credits & Plans</h2>
-        <a
-          class="btn btn-primary square-link-btn"
-          href="https://squareup.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Pay with Square</a>
-      </div>
-      <div class="credits-panel" id="creditsPanel">
-        <p class="muted">Sign in to view your credit balance.</p>
-      </div>
-    </section>
-  </main>
-
-  <div class="plan-modal hidden" id="planModal">
-    <div class="plan-card">
-      <h3>Playlist ready</h3>
-      <pre id="planSummary"></pre>
-      <div class="plan-actions">
-        <button class="btn btn-primary" id="exportBtn" type="button">Save & export</button>
-        <button class="btn btn-primary hidden" id="applyYoutubeBtn" type="button">Apply to YouTube</button>
-        <button class="btn btn-primary hidden" id="connectYoutubeBtn" type="button">Connect YouTube</button>
-        <button class="btn btn-ghost" id="copyCsvBtn" type="button">Copy CSV</button>
-        <button class="btn btn-ghost" id="dismissPlan" type="button">Keep chatting</button>
-      </div>
-      <div class="export-result hidden" id="exportResult"></div>
     </div>
-  </div>
 
-  <div class="auth-modal hidden" id="authModal">
-    <div class="auth-card">
-      <button class="auth-close" id="closeAuthModal" type="button" aria-label="Close">×</button>
-      <h3 id="authModalTitle">Sign in</h3>
-      <div class="auth-tabs">
-        <button class="auth-tab active" id="authTabSignIn" type="button">Sign in</button>
-        <button class="auth-tab" id="authTabSignUp" type="button">Sign up</button>
-      </div>
-      <form class="auth-form" id="signInForm">
-        <input id="signInLogin" type="text" placeholder="Email or username" autocomplete="username" required />
-        <input id="signInPassword" type="password" placeholder="Password" autocomplete="current-password" required />
-        <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
-        <p class="auth-error hidden" id="signInError"></p>
-      </form>
-      <form class="auth-form hidden" id="signUpForm">
-        <input id="signUpEmail" type="email" placeholder="Email" autocomplete="email" required />
-        <input id="signUpUsername" type="text" placeholder="Username" autocomplete="username" required />
-        <input id="signUpPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required />
-        <button class="btn btn-primary auth-submit" type="submit">Create account</button>
-        <p class="auth-error hidden" id="signUpError"></p>
-      </form>
-    </div>
-  </div>
-
-  <div class="toast hidden" id="toast"></div>
+    <div class="toast hidden" id="toast"></div>
   </div>
 
   <script src="/app.js"></script>
