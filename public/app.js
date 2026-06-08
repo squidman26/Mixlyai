@@ -781,8 +781,6 @@ authModal?.addEventListener("click", (e) => {
 
   app.classList.remove("hidden");
   await checkAuth();
-  const handledYoutubeReturn = await handleYoutubeConnectionResult();
-  if (!handledYoutubeReturn) {
-    await syncChatAccess();
-  }
+  await handleYoutubeConnectionResult();
+  await syncChatAccess();
 })();
