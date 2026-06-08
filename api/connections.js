@@ -17,7 +17,11 @@ import {
   requireAppSession,
   requireMethod,
 } from "../lib/api.js";
+import { requireAccess } from "../lib/gate.js";
+
 export default async function handler(req, res) {
+  if (!requireAccess(req, res)) return;
+
   if (req.method === "GET") {
     const { session } = getSession(req, res);
     if (!requireAppSession(req, res, session)) return;
