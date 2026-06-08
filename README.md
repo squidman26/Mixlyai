@@ -27,3 +27,22 @@ Users sign up with email, username, and password. Sessions are stored in encrypt
 - Chat messages cost 1 credit
 - Save & export costs 2 credits
 - Paid tiers via Square
+
+### YouTube (Google OAuth via Supabase)
+
+1. Create a Google OAuth web client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. Add authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
+3. Enable YouTube Data API v3 on the project.
+4. Set env vars: `GOOGLE_CLIENT_ID`, `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET`
+5. Enable Google provider in Supabase Dashboard → Authentication → Providers, or run:
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_... \
+GOOGLE_CLIENT_ID=... \
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET=... \
+node scripts/configure-supabase-google.mjs
+```
+
+6. Add your app URL to Supabase Auth → URL configuration → Redirect URLs (e.g. `https://mixlyai.vercel.app/*`)
+
+Users connect YouTube from the Connections panel after signing in to Mixly.

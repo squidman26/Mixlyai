@@ -2,6 +2,7 @@ import { getAccountById } from "../../lib/accounts.js";
 import { signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { getCanonicalBaseUrl } from "../../lib/config.js";
+import { getSupabasePublicConfig } from "../../lib/google-auth.js";
 import { getSession, json, readJsonBody, requireMethod } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
 import { isSquareConfigured } from "../../lib/square.js";
@@ -123,6 +124,7 @@ function handleInfo(req, res) {
   if (!requireMethod(req, res, "GET")) return;
   json(res, 200, {
     canonicalBaseUrl: getCanonicalBaseUrl(),
+    ...getSupabasePublicConfig(),
   });
 }
 
