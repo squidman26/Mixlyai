@@ -15,7 +15,6 @@ import {
   requireMethod,
 } from "../lib/api.js";
 import { getBaseUrl } from "../lib/config.js";
-import { requireAccess } from "../lib/gate.js";
 import { createTierCheckoutLink, isSquareConfigured } from "../lib/square.js";
 import { checkSupabaseCreditSchema } from "../lib/supabase.js";
 
@@ -110,8 +109,6 @@ async function createCheckout(req, res, body) {
 }
 
 export default async function handler(req, res) {
-  if (!requireAccess(req, res)) return;
-
   if (req.method === "GET") {
     try {
       await getCreditsStatus(req, res);
