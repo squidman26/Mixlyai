@@ -18,6 +18,23 @@ const signUpUsername = document.getElementById("signUpUsername");
 const signUpPassword = document.getElementById("signUpPassword");
 const signUpRemember = document.getElementById("signUpRemember");
 const signUpError = document.getElementById("signUpError");
+const openForgotPassword = document.getElementById("openForgotPassword");
+const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+const forgotPasswordEmail = document.getElementById("forgotPasswordEmail");
+const forgotPasswordError = document.getElementById("forgotPasswordError");
+const forgotPasswordSuccess = document.getElementById("forgotPasswordSuccess");
+const backToSignIn = document.getElementById("backToSignIn");
+const resetPasswordForm = document.getElementById("resetPasswordForm");
+const resetPasswordValue = document.getElementById("resetPasswordValue");
+const resetPasswordConfirm = document.getElementById("resetPasswordConfirm");
+const resetPasswordError = document.getElementById("resetPasswordError");
+const resetBackToSignIn = document.getElementById("resetBackToSignIn");
+const verifyEmailNotice = document.getElementById("verifyEmailNotice");
+const verifyEmailNoticeText = document.getElementById("verifyEmailNoticeText");
+const verifyNoticeResendBtn = document.getElementById("verifyNoticeResendBtn");
+const verifyNoticeSignInBtn = document.getElementById("verifyNoticeSignInBtn");
+const signInVerifyHint = document.getElementById("signInVerifyHint");
+const resendVerificationBtn = document.getElementById("resendVerificationBtn");
 
 const REMEMBER_LOGIN_KEY = "mixly_remember_login";
 const SAVED_LOGIN_KEY = "mixly_saved_login";
@@ -59,6 +76,8 @@ let lastCreditsPanelData = null;
 let currentUser = null;
 let youtubeConnected = false;
 let chatLockAction = () => openAuthModal("signin");
+let pendingVerificationEmail = "";
+let pendingResetToken = "";
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -133,21 +152,62 @@ function openAuthModal(mode = "signin") {
   showAuthTab(mode);
 }
 
-function closeAuthModalPanel() {
-  authModal.classList.add("hidden");
+function clearAuthErrors() {
   signInError.classList.add("hidden");
   signUpError.classList.add("hidden");
+  forgotPasswordError?.classList.add("hidden");
+  forgotPasswordSuccess?.classList.add("hidden");
+  resetPasswordError?.classList.add("hidden");
+  signInVerifyHint?.classList.add("hidden");
+  resendVerificationBtn?.classList.add("hidden");
+}
+
+function closeAuthModalPanel() {
+  authModal.classList.add("hidden");
+  clearAuthErrors();
+}
+
+function hideAllAuthPanels() {
+  signInForm?.classList.add("hidden");
+  signUpForm?.classList.add("hidden");
+  forgotPasswordForm?.classList.add("hidden");
+  resetPasswordForm?.classList.add("hidden");
+  verifyEmailNotice?.classList.add("hidden");
+  document.querySelector(".auth-tabs")?.classList.remove("hidden");
 }
 
 function showAuthTab(mode) {
-  const isSignIn = mode === "signin";
-  authTabSignIn.classList.toggle("active", isSignIn);
-  authTabSignUp.classList.toggle("active", !isSignIn);
-  signInForm.classList.toggle("hidden", !isSignIn);
-  signUpForm.classList.toggle("hidden", isSignIn);
-  document.getElementById("authModalTitle").textContent = isSignIn
-    ? "Sign in"
-    : "Create account";
+  hideAllAuthPanels();
+  clearAuthErrors();
+
+  const titles = {
+    signin: "Sign in",
+    signup: "Create account",
+    forgot: "Forgot password",
+    reset: "Reset password",
+    verify: "Verify your email",
+  };
+
+  const showTabs = mode === "signin" || mode === "signup";
+  document.querySelector(".auth-tabs")?.classList.toggle("hidden", !showTabs);
+  authTabSignIn?.classList.toggle("active", mode === "signin");
+  authTabSignUp?.classList.toggle("active", mode === "signup");
+
+  if (mode === "signin") signInForm?.classList.remove("hidden");
+  if (mode === "signup") signUpForm?.classList.remove("hidden");
+  if (mode === "forgot") forgotPasswordForm?.classList.remove("hidden");
+  if (mode === "reset") resetPasswordForm?.classList.remove("hidden");
+  if (mode === "verify") verifyEmailNotice?.classList.remove("hidden");
+
+  document.getElementById("authModalTitle").textContent = titles[mode] || "Sign in";
+}
+
+function showVerifyEmailNotice(email, message) {
+  pendingVerificationEmail = email || "";
+  verifyEmailNoticeText.textContent =
+    message ||
+    `We sent a verification link to ${email}. Open it to activate your account, then sign in.`;
+  showAuthTab("verify");
 }
 
 function openCreditsPanel() {
@@ -973,20 +1033,61 @@ async function loadPlaylists() {
   }
 }
 
+async function authRequest(path, payload) {
+  const code = getStoredAccessCode();
+  const headers = { "Content-Type": "application/json" };
+  if (code) headers["X-Site-Access-Code"] = code;
+
+  const res = await fetch(path, {
+    method: "POST",
+    credentials: "same-origin",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function resendVerificationForEmail(email) {
+  const targetEmail = email?.trim();
+  if (!targetEmail) {
+    showToast("Enter your email first", true);
+    return;
+  }
+
+  const { ok, data } = await authRequest("/api/auth/resend-verification", {
+    email: targetEmail,
+  });
+  if (!ok) throw new Error(data.error || "Failed to resend verification email");
+  showToast(data.message || "Verification email sent");
+}
+
 async function handleSignIn(e) {
   e.preventDefault();
   signInError.classList.add("hidden");
+  signInVerifyHint?.classList.add("hidden");
+  resendVerificationBtn?.classList.add("hidden");
   try {
     const login = signInLogin.value.trim();
     const remember = signInRemember?.checked ?? true;
-    const data = await api("/api/auth/signin", {
-      method: "POST",
-      body: JSON.stringify({
-        login,
-        password: signInPassword.value,
-        remember,
-      }),
+    const { ok, data } = await authRequest("/api/auth/signin", {
+      login,
+      password: signInPassword.value,
+      remember,
     });
+
+    if (!ok) {
+      if (data.code === "email_not_verified") {
+        signInVerifyHint.textContent = data.error;
+        signInVerifyHint.classList.remove("hidden");
+        resendVerificationBtn?.classList.remove("hidden");
+        resendVerificationBtn.dataset.email =
+          data.email || (login.includes("@") ? login : "");
+        return;
+      }
+      throw new Error(data.error || "Sign in failed");
+    }
+
     persistSignInPrefs(login, remember);
     authenticated = true;
     currentUser = data.user;
@@ -1005,28 +1106,118 @@ async function handleSignUp(e) {
   e.preventDefault();
   signUpError.classList.add("hidden");
   try {
-    const remember = signUpRemember?.checked ?? true;
-    const data = await api("/api/auth/signup", {
-      method: "POST",
-      body: JSON.stringify({
-        email: signUpEmail.value.trim(),
-        username: signUpUsername.value.trim(),
-        password: signUpPassword.value,
-        remember,
-      }),
+    const email = signUpEmail.value.trim();
+    const username = signUpUsername.value.trim();
+    const { ok, data } = await authRequest("/api/auth/signup", {
+      email,
+      username,
+      password: signUpPassword.value,
     });
-    persistSignInPrefs(signUpUsername.value.trim(), remember);
-    authenticated = true;
-    currentUser = data.user;
-    closeAuthModalPanel();
+
+    if (!ok) throw new Error(data.error || "Sign up failed");
+
+    persistSignInPrefs(username, signUpRemember?.checked ?? true);
     signUpForm.reset();
-    await checkAuth();
-    await syncChatAccess();
-    showToast("Account created");
+    showVerifyEmailNotice(email, data.message);
+    showToast("Check your email to verify your account");
   } catch (err) {
     signUpError.textContent = err.message;
     signUpError.classList.remove("hidden");
   }
+}
+
+async function handleForgotPassword(e) {
+  e.preventDefault();
+  forgotPasswordError?.classList.add("hidden");
+  forgotPasswordSuccess?.classList.add("hidden");
+  try {
+    const email = forgotPasswordEmail.value.trim();
+    const { ok, data } = await authRequest("/api/auth/forgot-password", { email });
+    if (!ok) throw new Error(data.error || "Failed to send reset email");
+    forgotPasswordSuccess.textContent =
+      data.message || "If an account exists for that email, a reset link was sent.";
+    forgotPasswordSuccess.classList.remove("hidden");
+    showToast("Reset link sent if the account exists");
+  } catch (err) {
+    forgotPasswordError.textContent = err.message;
+    forgotPasswordError.classList.remove("hidden");
+  }
+}
+
+async function handleResetPassword(e) {
+  e.preventDefault();
+  resetPasswordError?.classList.add("hidden");
+  try {
+    if (!pendingResetToken) {
+      throw new Error("Reset link is missing or invalid");
+    }
+    if (resetPasswordValue.value !== resetPasswordConfirm.value) {
+      throw new Error("Passwords do not match");
+    }
+
+    const { ok, data } = await authRequest("/api/auth/reset-password", {
+      token: pendingResetToken,
+      password: resetPasswordValue.value,
+    });
+    if (!ok) throw new Error(data.error || "Failed to reset password");
+
+    pendingResetToken = "";
+    resetPasswordForm.reset();
+    clearResetQueryParam();
+    showAuthTab("signin");
+    showToast(data.message || "Password updated");
+  } catch (err) {
+    resetPasswordError.textContent = err.message;
+    resetPasswordError.classList.remove("hidden");
+  }
+}
+
+function clearResetQueryParam() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("reset")) return;
+  params.delete("reset");
+  const nextSearch = params.toString();
+  window.history.replaceState(
+    {},
+    "",
+    `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`
+  );
+}
+
+function handleAuthQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  const authStatus = params.get("auth");
+  const resetToken = params.get("reset");
+
+  if (authStatus === "verified") {
+    showToast("Email verified. You can sign in now.");
+    openAuthModal("signin");
+  } else if (authStatus === "verify-error") {
+    const message = params.get("message");
+    const labels = {
+      missing_token: "Verification link is missing a token.",
+      invalid_or_expired: "Verification link is invalid or has expired.",
+    };
+    showToast(labels[message] || "Email verification failed", true);
+    openAuthModal("signin");
+  }
+
+  if (resetToken) {
+    pendingResetToken = resetToken;
+    openAuthModal("reset");
+    params.delete("reset");
+  }
+
+  if (!authStatus && !resetToken) return;
+
+  params.delete("auth");
+  params.delete("message");
+  const nextSearch = params.toString();
+  window.history.replaceState(
+    {},
+    "",
+    `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`
+  );
 }
 
 function switchPanel(panelName) {
@@ -1087,6 +1278,26 @@ authTabSignIn?.addEventListener("click", () => showAuthTab("signin"));
 authTabSignUp?.addEventListener("click", () => showAuthTab("signup"));
 signInForm?.addEventListener("submit", handleSignIn);
 signUpForm?.addEventListener("submit", handleSignUp);
+openForgotPassword?.addEventListener("click", () => showAuthTab("forgot"));
+backToSignIn?.addEventListener("click", () => showAuthTab("signin"));
+resetBackToSignIn?.addEventListener("click", () => showAuthTab("signin"));
+verifyNoticeSignInBtn?.addEventListener("click", () => showAuthTab("signin"));
+forgotPasswordForm?.addEventListener("submit", handleForgotPassword);
+resetPasswordForm?.addEventListener("submit", handleResetPassword);
+resendVerificationBtn?.addEventListener("click", async () => {
+  try {
+    await resendVerificationForEmail(resendVerificationBtn.dataset.email || signInLogin.value.trim());
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+verifyNoticeResendBtn?.addEventListener("click", async () => {
+  try {
+    await resendVerificationForEmail(pendingVerificationEmail);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
 chatLockActionBtn?.addEventListener("click", () => chatLockAction());
 authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
@@ -1200,6 +1411,7 @@ async function handlePurchaseReturn(tierId) {
   if (!unlocked) return;
 
   await checkAuth();
+  handleAuthQueryParams();
   handleYoutubeConnectionResult();
   await syncChatAccess();
 

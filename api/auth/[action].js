@@ -1,5 +1,17 @@
-import { getAccountById } from "../../lib/accounts.js";
-import { signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
+import {
+  EmailNotVerifiedError,
+  getAccountById,
+  markEmailVerified,
+  updateAccountPassword,
+} from "../../lib/accounts.js";
+import {
+  signIn,
+  signUp,
+  isAppAuthenticated,
+  resendVerificationEmail,
+  requestPasswordReset,
+} from "../../lib/app-auth.js";
+import { consumeAuthToken, TOKEN_TYPES } from "../../lib/email-tokens.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { getCanonicalBaseUrl } from "../../lib/config.js";
 import { upsertYoutubeConnection } from "../../lib/connections.js";
@@ -20,24 +32,22 @@ async function handleSignup(req, res) {
 
   try {
     const body = await readJsonBody(req);
-    const session = await signUp({
+    const account = await signUp({
       email: body.email,
       username: body.username,
       password: body.password,
-      remember: body.remember !== false,
     });
-
-    const { save } = getSession(req, res);
-    save(session);
 
     json(res, 200, {
       ok: true,
+      verificationRequired: true,
       user: {
-        name: session.displayName,
-        username: session.username,
-        email: session.email,
-        accountId: session.accountId,
+        name: account.display_name || account.username,
+        username: account.username,
+        email: account.email,
+        accountId: account.id,
       },
+      message: "Check your email to verify your account before signing in.",
     });
   } catch (err) {
     json(res, 400, { error: err.message || "Sign up failed" });
@@ -73,6 +83,14 @@ async function handleSignin(req, res) {
       },
     });
   } catch (err) {
+    if (err instanceof EmailNotVerifiedError) {
+      json(res, 403, {
+        error: err.message,
+        code: "email_not_verified",
+        email: err.email,
+      });
+      return;
+    }
     json(res, 400, { error: err.message || "Sign in failed" });
   }
 }
@@ -129,6 +147,103 @@ async function handleStatus(req, res) {
     });
   } catch {
     json(res, 200, { authenticated: false });
+  }
+}
+
+async function handleVerifyEmail(req, res) {
+  if (!requireMethod(req, res, "GET")) return;
+
+  const token = req.query?.token;
+  if (!token) {
+    redirect(res, "/?auth=verify-error&message=missing_token");
+    return;
+  }
+
+  try {
+    const accountId = await consumeAuthToken(token, TOKEN_TYPES.VERIFY_EMAIL);
+    if (!accountId) {
+      redirect(res, "/?auth=verify-error&message=invalid_or_expired");
+      return;
+    }
+
+    await markEmailVerified(accountId);
+    redirect(res, "/?auth=verified");
+  } catch (err) {
+    redirect(
+      res,
+      `/?auth=verify-error&message=${encodeURIComponent(err.message || "verification_failed")}`
+    );
+  }
+}
+
+async function handleResendVerification(req, res) {
+  if (!requireMethod(req, res, "POST")) return;
+
+  try {
+    const body = await readJsonBody(req);
+    const email = body.email?.trim();
+    if (!email) {
+      json(res, 400, { error: "Email is required" });
+      return;
+    }
+
+    await resendVerificationEmail(email);
+    json(res, 200, {
+      ok: true,
+      message: "If that account exists and is unverified, a new verification email was sent.",
+    });
+  } catch (err) {
+    json(res, 400, { error: err.message || "Failed to resend verification email" });
+  }
+}
+
+async function handleForgotPassword(req, res) {
+  if (!requireMethod(req, res, "POST")) return;
+
+  try {
+    const body = await readJsonBody(req);
+    const email = body.email?.trim();
+    if (!email) {
+      json(res, 400, { error: "Email is required" });
+      return;
+    }
+
+    await requestPasswordReset(email);
+    json(res, 200, {
+      ok: true,
+      message: "If an account exists for that email, a reset link was sent.",
+    });
+  } catch (err) {
+    json(res, 400, { error: err.message || "Failed to send reset email" });
+  }
+}
+
+async function handleResetPassword(req, res) {
+  if (!requireMethod(req, res, "POST")) return;
+
+  try {
+    const body = await readJsonBody(req);
+    const token = body.token?.trim();
+    const password = body.password;
+
+    if (!token || !password) {
+      json(res, 400, { error: "Token and new password are required" });
+      return;
+    }
+
+    const accountId = await consumeAuthToken(token, TOKEN_TYPES.RESET_PASSWORD);
+    if (!accountId) {
+      json(res, 400, { error: "Reset link is invalid or has expired" });
+      return;
+    }
+
+    await updateAccountPassword(accountId, password);
+    json(res, 200, {
+      ok: true,
+      message: "Password updated. You can sign in with your new password.",
+    });
+  } catch (err) {
+    json(res, 400, { error: err.message || "Failed to reset password" });
   }
 }
 
@@ -222,6 +337,11 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (action === "verify-email") {
+    await handleVerifyEmail(req, res);
+    return;
+  }
+
   if (!requireAccess(req, res)) return;
 
   switch (action) {
@@ -236,6 +356,15 @@ export default async function handler(req, res) {
       break;
     case "status":
       await handleStatus(req, res);
+      break;
+    case "resend-verification":
+      await handleResendVerification(req, res);
+      break;
+    case "forgot-password":
+      await handleForgotPassword(req, res);
+      break;
+    case "reset-password":
+      await handleResetPassword(req, res);
       break;
     default:
       json(res, 404, { error: "Unknown auth action" });

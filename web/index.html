@@ -206,7 +206,10 @@
             <span>Remember me</span>
           </label>
           <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+          <button class="auth-link-btn" id="openForgotPassword" type="button">Forgot password?</button>
           <p class="auth-error hidden" id="signInError"></p>
+          <p class="auth-hint hidden" id="signInVerifyHint"></p>
+          <button class="btn btn-secondary auth-resend hidden" id="resendVerificationBtn" type="button">Resend verification email</button>
         </form>
         <form class="auth-form hidden" id="signUpForm">
           <input id="signUpEmail" type="email" placeholder="Email" autocomplete="email" required />
@@ -219,6 +222,27 @@
           <button class="btn btn-primary auth-submit" type="submit">Create account</button>
           <p class="auth-error hidden" id="signUpError"></p>
         </form>
+        <form class="auth-form hidden" id="forgotPasswordForm">
+          <p class="auth-hint">Enter your account email and we will send a reset link.</p>
+          <input id="forgotPasswordEmail" type="email" placeholder="Email" autocomplete="email" required />
+          <button class="btn btn-primary auth-submit" type="submit">Send reset link</button>
+          <button class="auth-link-btn" id="backToSignIn" type="button">Back to sign in</button>
+          <p class="auth-error hidden" id="forgotPasswordError"></p>
+          <p class="auth-hint hidden" id="forgotPasswordSuccess"></p>
+        </form>
+        <form class="auth-form hidden" id="resetPasswordForm">
+          <p class="auth-hint">Choose a new password for your account.</p>
+          <input id="resetPasswordValue" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" required />
+          <input id="resetPasswordConfirm" type="password" placeholder="Confirm new password" autocomplete="new-password" required />
+          <button class="btn btn-primary auth-submit" type="submit">Update password</button>
+          <button class="auth-link-btn" id="resetBackToSignIn" type="button">Back to sign in</button>
+          <p class="auth-error hidden" id="resetPasswordError"></p>
+        </form>
+        <div class="auth-form hidden" id="verifyEmailNotice">
+          <p class="auth-hint" id="verifyEmailNoticeText"></p>
+          <button class="btn btn-secondary auth-resend" id="verifyNoticeResendBtn" type="button">Resend verification email</button>
+          <button class="auth-link-btn" id="verifyNoticeSignInBtn" type="button">Back to sign in</button>
+        </div>
       </div>
     </div>
 

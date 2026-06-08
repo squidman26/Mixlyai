@@ -20,6 +20,7 @@ const MIGRATIONS = [
   "20250607170000_fix_auth_columns.sql",
   "20250607180000_app_external_id.sql",
   "20250607190000_account_connections.sql",
+  "20250608130000_email_verification.sql",
 ];
 
 async function runQuery(token, sql) {
