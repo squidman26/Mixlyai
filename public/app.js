@@ -31,7 +31,8 @@ const toast = document.getElementById("toast");
 const app = document.getElementById("app");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
-const chatLockSignInBtn = document.getElementById("chatLockSignInBtn");
+const chatLockMessage = document.getElementById("chatLockMessage");
+const chatLockActionBtn = document.getElementById("chatLockActionBtn");
 const headerCreditsBtn = document.getElementById("headerCreditsBtn");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
@@ -43,6 +44,7 @@ let chatStarted = false;
 let creditStatus = null;
 let currentUser = null;
 let youtubeConnected = false;
+let chatLockAction = () => openAuthModal("signin");
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -164,11 +166,27 @@ async function checkAuth() {
   }
 }
 
+function canUseChat() {
+  return authenticated && youtubeConnected;
+}
+
 function updateChatLock() {
-  if (authenticated) {
+  if (canUseChat()) {
     chatLock.classList.add("hidden");
+    return;
+  }
+
+  chatLock.classList.remove("hidden");
+
+  if (!authenticated) {
+    chatLockMessage.textContent = "Sign in to chat with the playlist curator.";
+    chatLockActionBtn.textContent = "Sign in or create account";
+    chatLockAction = () => openAuthModal("signin");
   } else {
-    chatLock.classList.remove("hidden");
+    chatLockMessage.textContent =
+      "Connect your YouTube account to start chatting. Open Connections to link your account.";
+    chatLockActionBtn.textContent = "Go to Connections";
+    chatLockAction = openConnectionsPanel;
   }
 }
 
@@ -314,8 +332,8 @@ async function unlockAndStartChat() {
   await startChat();
 }
 
-async function syncChatWithAuth(isAuthed) {
-  if (isAuthed) {
+async function syncChatAccess() {
+  if (canUseChat()) {
     await unlockAndStartChat();
   } else {
     lockChat();
@@ -370,6 +388,12 @@ async function sendMessage(text) {
     return;
   }
 
+  if (!youtubeConnected) {
+    showToast("Connect YouTube in Connections to start chatting", true);
+    openConnectionsPanel();
+    return;
+  }
+
   messages.push({ role: "user", content: text });
   addMessage("user", text);
   chatMessage.disabled = true;
@@ -387,7 +411,7 @@ async function sendMessage(text) {
     if (handleInsufficientCredits(err)) return;
     addMessage("system", `Error: ${err.message}`);
   } finally {
-    if (authenticated) {
+    if (canUseChat()) {
       chatMessage.disabled = false;
       chatMessage.focus();
     }
@@ -535,7 +559,7 @@ function renderConnectionsPanel(connections) {
   });
 }
 
-function handleYoutubeConnectionResult() {
+async function handleYoutubeConnectionResult() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("connections") !== "youtube") return false;
 
@@ -545,8 +569,9 @@ function handleYoutubeConnectionResult() {
   if (status === "connected") {
     showToast("YouTube connected!");
     openConnectionsPanel();
-    loadConnections();
-    refreshConnectionState();
+    await loadConnections();
+    await refreshConnectionState();
+    await syncChatAccess();
   } else if (status === "error") {
     showToast(message || "YouTube connection failed", true);
     openConnectionsPanel();
@@ -591,6 +616,7 @@ async function disconnectProvider(provider) {
     showToast("Disconnected");
     await loadConnections();
     await refreshConnectionState();
+    await syncChatAccess();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -656,7 +682,7 @@ async function handleSignIn(e) {
     closeAuthModalPanel();
     signInForm.reset();
     await checkAuth();
-    await syncChatWithAuth(authenticated);
+    await syncChatAccess();
     showToast("Signed in");
   } catch (err) {
     signInError.textContent = err.message;
@@ -681,7 +707,7 @@ async function handleSignUp(e) {
     closeAuthModalPanel();
     signUpForm.reset();
     await checkAuth();
-    await syncChatWithAuth(authenticated);
+    await syncChatAccess();
     showToast("Account created");
   } catch (err) {
     signUpError.textContent = err.message;
@@ -706,6 +732,11 @@ chatForm.addEventListener("submit", (e) => {
   if (!authenticated) {
     showToast("Sign in first", true);
     openAuthModal("signin");
+    return;
+  }
+  if (!youtubeConnected) {
+    showToast("Connect YouTube in Connections to start chatting", true);
+    openConnectionsPanel();
     return;
   }
   const text = chatMessage.value.trim();
@@ -735,7 +766,7 @@ authTabSignIn?.addEventListener("click", () => showAuthTab("signin"));
 authTabSignUp?.addEventListener("click", () => showAuthTab("signup"));
 signInForm?.addEventListener("submit", handleSignIn);
 signUpForm?.addEventListener("submit", handleSignUp);
-chatLockSignInBtn?.addEventListener("click", () => openAuthModal("signin"));
+chatLockActionBtn?.addEventListener("click", () => chatLockAction());
 authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
@@ -750,6 +781,6 @@ authModal?.addEventListener("click", (e) => {
 
   app.classList.remove("hidden");
   await checkAuth();
-  handleYoutubeConnectionResult();
-  await syncChatWithAuth(authenticated);
+  await handleYoutubeConnectionResult();
+  await syncChatAccess();
 })();

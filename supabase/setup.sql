@@ -51,14 +51,16 @@ create table if not exists public.account_connections (
   provider text not null check (provider in ('youtube')),
   external_id text,
   display_name text,
-  access_token text,
-  refresh_token text,
-  token_expires_at timestamptz,
-  scope text,
   connected_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (account_id, provider)
 );
+
+alter table public.account_connections
+  add column if not exists access_token text,
+  add column if not exists refresh_token text,
+  add column if not exists token_expires_at timestamptz,
+  add column if not exists scope text;
 
 create index if not exists idx_account_connections_account_id
   on public.account_connections(account_id);
