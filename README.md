@@ -36,3 +36,17 @@ Users sign up with email, username, and password. Sessions are stored in encrypt
 4. Set env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (or `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET` as a fallback).
 
 Users connect YouTube from the Connections panel after signing in to Mixly. OAuth uses PKCE and stores tokens in your Supabase database — Supabase Auth Google provider is not required.
+
+**Database:** `account_connections` needs OAuth token columns. If connect fails with `Could not find the 'access_token' column`, run in [Supabase SQL Editor](https://supabase.com/dashboard/project/npkmlflciakpzkskkqvy/sql/new):
+
+```sql
+alter table public.account_connections
+  add column if not exists access_token text,
+  add column if not exists refresh_token text,
+  add column if not exists token_expires_at timestamptz,
+  add column if not exists scope text;
+
+notify pgrst, 'reload schema';
+```
+
+Or: `SUPABASE_ACCESS_TOKEN=sbp_... node scripts/apply-youtube-oauth-schema.mjs`

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Apply Mixly auth schema to Supabase.
+ * Add OAuth token columns to account_connections (required for YouTube connect).
  *
  * Usage:
- *   SUPABASE_ACCESS_TOKEN=sbp_... node scripts/apply-auth-schema.mjs
+ *   SUPABASE_ACCESS_TOKEN=sbp_... node scripts/apply-youtube-oauth-schema.mjs
  *
- * Get a token: https://supabase.com/dashboard/account/tokens
+ * Or paste supabase/migrations/20250608000000_youtube_connection_tokens.sql
+ * into Supabase Dashboard → SQL Editor → Run.
  */
 
 import { readFileSync } from "node:fs";
@@ -15,16 +16,6 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const PROJECT_REF = "npkmlflciakpzkskkqvy";
-
-const MIGRATIONS = [
-  "20250607170000_fix_auth_columns.sql",
-  "20250607180000_app_external_id.sql",
-  "20250607190000_account_connections.sql",
-  "20250607200000_soundcloud_oauth_tokens.sql",
-  "20250607210000_saved_playlists_provider.sql",
-  "20250607220000_remove_soundcloud.sql",
-  "20250608000000_youtube_connection_tokens.sql",
-];
 
 async function runQuery(token, sql) {
   const res = await fetch(
@@ -54,19 +45,21 @@ async function main() {
   if (!token) {
     console.error("Missing SUPABASE_ACCESS_TOKEN.");
     console.error("Create one at https://supabase.com/dashboard/account/tokens");
-    console.error("Then run: SUPABASE_ACCESS_TOKEN=sbp_... node scripts/apply-auth-schema.mjs");
+    console.error(
+      "Then run: SUPABASE_ACCESS_TOKEN=sbp_... node scripts/apply-youtube-oauth-schema.mjs"
+    );
     process.exitCode = 1;
     return;
   }
 
-  for (const file of MIGRATIONS) {
-    const sql = readFileSync(join(ROOT, "supabase/migrations", file), "utf8");
-    console.log(`Applying ${file}...`);
-    await runQuery(token, sql);
-    console.log(`Applied ${file}`);
-  }
+  const sql = readFileSync(
+    join(ROOT, "supabase/migrations/20250608000000_youtube_connection_tokens.sql"),
+    "utf8"
+  );
 
-  console.log("Auth schema is ready. Sign-up should work now.");
+  console.log("Applying YouTube OAuth token columns...");
+  await runQuery(token, sql);
+  console.log("Done. YouTube connect should work now.");
 }
 
 main().catch((err) => {
