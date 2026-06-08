@@ -103,10 +103,23 @@ function openConnectionsPanel() {
   document.querySelector('.tool-btn[data-panel="connections"]')?.click();
 }
 
+function updateCreditsTabLabel(credits) {
+  document.querySelectorAll('.tool-btn[data-panel="credits"] .tool-label').forEach((el) => {
+    if (!el.dataset.defaultLabel) {
+      el.dataset.defaultLabel = el.textContent;
+    }
+    el.textContent = credits?.unlimited
+      ? "DEVELOPER UNLIMITED TOKENS"
+      : el.dataset.defaultLabel;
+  });
+}
+
 function renderAuth(user, credits) {
+  updateCreditsTabLabel(credits);
+
   if (user) {
     const creditBadge = credits?.unlimited
-      ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">Unlimited credits</span>'
+      ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">DEVELOPER UNLIMITED TOKENS</span>'
       : credits
         ? `<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">${credits.credits} credits</span>`
         : "";
@@ -373,9 +386,17 @@ function renderCreditsPanel() {
   const data = lastCreditsPanelData;
   if (!data) return;
 
-  const balanceText = data.unlimited
-    ? "Unlimited"
-    : `${data.credits} credits remaining`;
+  if (data.unlimited) {
+    selectedPurchaseTier = null;
+    creditsPanel.innerHTML = `
+      <div class="credits-developer-panel">
+        <div class="credits-developer-title">DEVELOPER UNLIMITED TOKENS</div>
+        <p class="muted">Developer access is active. Credit limits are bypassed on this account.</p>
+      </div>`;
+    return;
+  }
+
+  const balanceText = `${data.credits} credits remaining`;
 
   if (
     selectedPurchaseTier &&
@@ -390,7 +411,7 @@ function renderCreditsPanel() {
     <div class="credits-summary">
       <h3>${escapeHtml(data.tierName)} plan</h3>
       <div class="credits-balance">${escapeHtml(balanceText)}</div>
-      <p class="muted">${data.unlimited ? "This account has unlimited credits." : `${data.tierCredits.toLocaleString()} credits included on this tier.`}</p>
+      <p class="muted">${data.tierCredits.toLocaleString()} credits included on this tier.</p>
       <div class="credits-costs">
         <span>Chat: ${data.costs.chatMessage ? `${data.costs.chatMessage} credit` : "Free"}</span>
         <span>Save playlist: ${data.costs.exportPlaylist} credits</span>
