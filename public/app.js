@@ -247,7 +247,7 @@ function renderTierCard(tier, data) {
   const isSelected = tier.id === selectedPurchaseTier;
   const selectable = isTierSelectable(tier, data);
   const statusLabel = data.unlimited
-    ? "Included"
+    ? ""
     : isCurrent
       ? "Current plan"
       : tier.id === "free"
@@ -257,7 +257,7 @@ function renderTierCard(tier, data) {
   const cardBody = `
     <div class="tier-card-top">
       <h4>${escapeHtml(tier.name)}</h4>
-      <span class="tier-status">${statusLabel}</span>
+      ${statusLabel ? `<span class="tier-status">${statusLabel}</span>` : ""}
     </div>
     <div class="tier-price">${escapeHtml(tier.priceLabel)}</div>
     <div class="tier-credits">${tier.credits.toLocaleString()} credits</div>
