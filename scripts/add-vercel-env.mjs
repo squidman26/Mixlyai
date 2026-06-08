@@ -9,7 +9,7 @@
 const [key, value] = process.argv.slice(2);
 const token = process.env.VERCEL_TOKEN;
 const projectId =
-  process.env.VERCEL_PROJECT_ID || "prj_6RMMl8r1Z09XCNTzCGooBwR4J6Fn";
+  process.env.VERCEL_PROJECT_ID || "prj_6RMMl8r1Z09XCNNzCGooBwR4J6Fn";
 
 if (!key || !value) {
   console.error("Usage: VERCEL_TOKEN=... node scripts/add-vercel-env.mjs KEY VALUE");

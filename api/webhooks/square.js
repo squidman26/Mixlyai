@@ -3,6 +3,7 @@ import { json } from "../../lib/api.js";
 import {
   fetchSquareOrder,
   getSquareWebhookUrl,
+  normalizeAccountId,
   verifySquareWebhookSignature,
 } from "../../lib/square.js";
 
@@ -13,12 +14,15 @@ async function readRawBody(req) {
 }
 
 function parsePaymentNote(note) {
-  if (!note || !note.startsWith("mixly:")) {
-    return null;
+  if (!note) return null;
+
+  if (note.startsWith("mixly:") || note.startsWith("m:")) {
+    const [, accountId, tierId] = note.split(":");
+    if (!accountId || !tierId) return null;
+    return { accountId: normalizeAccountId(accountId), tierId };
   }
-  const [, accountId, tierId] = note.split(":");
-  if (!accountId || !tierId) return null;
-  return { accountId, tierId };
+
+  return null;
 }
 
 function resolvePurchaseMeta(payment, order) {
@@ -44,7 +48,7 @@ function resolvePurchaseMeta(payment, order) {
     const [refAccountId, refTierId] = referenceId.split(":");
     if (refAccountId && refTierId) {
       return {
-        accountId: refAccountId,
+        accountId: normalizeAccountId(refAccountId),
         tierId: refTierId,
         orderId: order?.id ?? payment.order_id ?? null,
       };
