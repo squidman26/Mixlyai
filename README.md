@@ -1,6 +1,6 @@
 # Mixly
 
-AI playlist curator — chat with Claude to design playlists, then save and export track lists as CSV.
+AI YouTube playlist maker — chat with Claude to design playlists, then save and export track lists as CSV. Connect YouTube to apply playlists directly (coming soon).
 
 **Live site:** https://mixlyai.vercel.app
 

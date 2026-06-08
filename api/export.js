@@ -9,17 +9,14 @@ import {
 } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
 import { CREDIT_COSTS, deductCredits } from "../lib/credits.js";
-import { applyPlanToSoundCloud } from "../lib/soundcloud-apply.js";
 import { normalizePlan } from "../src/plan.js";
 
-function tracksToCsv(tracks, { includeSoundCloud = false } = {}) {
-  const header = includeSoundCloud ? "artist,title,soundcloud_url" : "artist,title";
+function tracksToCsv(tracks) {
+  const header = "artist,title";
   const rows = tracks.map((t) => {
     const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
     const title = `"${String(t.title).replace(/"/g, '""')}"`;
-    if (!includeSoundCloud) return `${artist},${title}`;
-    const url = `"${String(t.soundcloudUrl || "").replace(/"/g, '""')}"`;
-    return `${artist},${title},${url}`;
+    return `${artist},${title}`;
   });
   return [header, ...rows].join("\n");
 }
@@ -39,7 +36,6 @@ export default async function handler(req, res) {
     }
 
     const plan = normalizePlan(body.plan);
-    const applyTo = body.applyTo?.trim().toLowerCase();
 
     const creditResult = await deductCredits(
       session.accountId,
@@ -51,33 +47,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    let soundcloud = null;
-    let tracksForSave = plan.tracks;
-
-    if (applyTo === "soundcloud") {
-      soundcloud = await applyPlanToSoundCloud(session.accountId, plan);
-      tracksForSave = soundcloud.tracksJson;
-    } else if (applyTo) {
-      json(res, 400, { error: `Unsupported apply target: ${applyTo}` });
-      return;
-    }
-
-    const saved = await savePlaylist(
-      session.accountId,
-      plan,
-      applyTo === "soundcloud"
-        ? {
-            tracksJson: tracksForSave,
-            provider: "soundcloud",
-            externalPlaylistId:
-              soundcloud?.playlist?.urn ||
-              (soundcloud?.playlist?.id != null
-                ? String(soundcloud.playlist.id)
-                : null),
-            externalPlaylistUrl: soundcloud?.playlist?.permalinkUrl ?? null,
-          }
-        : {}
-    );
+    const saved = await savePlaylist(session.accountId, plan);
 
     json(res, 200, {
       saved: Boolean(saved),
@@ -91,9 +61,8 @@ export default async function handler(req, res) {
             externalPlaylistUrl: saved.external_playlist_url ?? null,
           }
         : null,
-      csv: tracksToCsv(tracksForSave, { includeSoundCloud: Boolean(soundcloud) }),
-      json: tracksForSave,
-      soundcloud,
+      csv: tracksToCsv(plan.tracks),
+      json: plan.tracks,
       credits: creditResult.unlimited ? null : creditResult.credits,
       unlimitedCredits: creditResult.unlimited,
     });

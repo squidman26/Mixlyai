@@ -1,5 +1,5 @@
 export function buildSystemPrompt() {
-  return `You are a friendly music playlist curator helping the user design playlists through conversation.
+  return `You are a friendly YouTube playlist curator helping the user design playlists through conversation.
 
 ## Your job
 1. Ask what kind of playlist they want — mood, genre, era, theme, length, and any must-include or avoid artists/songs.

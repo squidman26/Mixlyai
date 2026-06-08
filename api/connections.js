@@ -11,13 +11,6 @@ import {
   requireMethod,
 } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
-import {
-  buildAuthorizeUrl,
-  generatePkcePair,
-  isSoundCloudConfigured,
-  setSoundCloudOAuthCookie,
-} from "../lib/soundcloud.js";
-import crypto from "crypto";
 
 export default async function handler(req, res) {
   if (!requireAccess(req, res)) return;
@@ -49,29 +42,6 @@ export default async function handler(req, res) {
         json(res, 200, {
           ok: true,
           connections: buildConnectionsResponse(connections),
-        });
-        return;
-      }
-
-      if (body.action === "connect" && body.provider === "soundcloud") {
-        if (!isSoundCloudConfigured()) {
-          json(res, 503, {
-            error:
-              "SoundCloud is not configured. Add SOUNDCLOUD_CLIENT_ID and SOUNDCLOUD_CLIENT_SECRET.",
-          });
-          return;
-        }
-
-        const { codeVerifier, codeChallenge } = generatePkcePair();
-        const state = crypto.randomBytes(16).toString("base64url");
-        setSoundCloudOAuthCookie(res, {
-          state,
-          codeVerifier,
-          accountId: session.accountId,
-        });
-
-        json(res, 200, {
-          authorizeUrl: buildAuthorizeUrl(req, { state, codeChallenge }),
         });
         return;
       }

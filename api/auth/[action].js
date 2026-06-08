@@ -2,16 +2,8 @@ import { getAccountById } from "../../lib/accounts.js";
 import { signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { getCanonicalBaseUrl } from "../../lib/config.js";
-import { getSession, json, readJsonBody, redirect, requireMethod } from "../../lib/api.js";
+import { getSession, json, readJsonBody, requireMethod } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
-import { upsertSoundCloudConnection } from "../../lib/connections.js";
-import {
-  clearSoundCloudOAuthCookie,
-  exchangeAuthorizationCode,
-  getMe,
-  getSoundCloudRedirectUri,
-  readSoundCloudOAuthCookie,
-} from "../../lib/soundcloud.js";
 import { isSquareConfigured } from "../../lib/square.js";
 
 async function handleSignup(req, res) {
@@ -134,78 +126,11 @@ function handleInfo(req, res) {
   });
 }
 
-function connectionsRedirect(status, message) {
-  const params = new URLSearchParams({
-    connections: "soundcloud",
-    status,
-  });
-  if (message) params.set("message", message);
-  return `/?${params}`;
-}
-
-async function handleSoundCloudCallback(req, res) {
-  if (!requireMethod(req, res, "GET")) return;
-
-  const oauthError = req.query?.error;
-  if (oauthError) {
-    clearSoundCloudOAuthCookie(res);
-    redirect(
-      res,
-      connectionsRedirect("error", String(req.query?.error_description || oauthError))
-    );
-    return;
-  }
-
-  const code = req.query?.code;
-  const state = req.query?.state;
-  const pending = readSoundCloudOAuthCookie(req);
-
-  if (!code || !state || !pending) {
-    clearSoundCloudOAuthCookie(res);
-    redirect(res, connectionsRedirect("error", "Missing OAuth state or code"));
-    return;
-  }
-
-  if (state !== pending.state) {
-    clearSoundCloudOAuthCookie(res);
-    redirect(res, connectionsRedirect("error", "OAuth state mismatch"));
-    return;
-  }
-
-  const { session } = getSession(req, res);
-  if (!session?.accountId || session.accountId !== pending.accountId) {
-    clearSoundCloudOAuthCookie(res);
-    redirect(res, connectionsRedirect("error", "Sign in before connecting SoundCloud"));
-    return;
-  }
-
-  try {
-    const redirectUri = getSoundCloudRedirectUri(req);
-    const tokens = await exchangeAuthorizationCode({
-      code,
-      redirectUri,
-      codeVerifier: pending.codeVerifier,
-    });
-    const profile = await getMe(tokens.access_token);
-    await upsertSoundCloudConnection(session.accountId, { profile, tokens });
-    clearSoundCloudOAuthCookie(res);
-    redirect(res, connectionsRedirect("connected"));
-  } catch (err) {
-    clearSoundCloudOAuthCookie(res);
-    redirect(res, connectionsRedirect("error", err.message || "SoundCloud connection failed"));
-  }
-}
-
 export default async function handler(req, res) {
   const action = req.query?.action;
 
   if (action === "info") {
     handleInfo(req, res);
-    return;
-  }
-
-  if (action === "soundcloud-callback") {
-    await handleSoundCloudCallback(req, res);
     return;
   }
 
