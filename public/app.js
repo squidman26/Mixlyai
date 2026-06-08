@@ -385,7 +385,7 @@ async function startChat() {
     if (data.plan) showPlan(data.plan);
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (handleInsufficientCredits(err)) {
+    if (await handleInsufficientCredits(err)) {
       chatStarted = false;
       return;
     }
@@ -421,7 +421,7 @@ async function sendMessage(text) {
     if (data.plan) showPlan(data.plan);
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (handleInsufficientCredits(err)) return;
+    if (await handleInsufficientCredits(err)) return;
     addMessage("system", `Error: ${err.message}`);
   } finally {
     if (canUseChat()) {
@@ -478,7 +478,7 @@ async function runExport({ applyTo } = {}) {
     planModal.classList.add("hidden");
     updateCreditsFromResponse(data);
   } catch (err) {
-    if (handleInsufficientCredits(err)) return;
+    if (await handleInsufficientCredits(err)) return;
     showToast(err.message, true);
   } finally {
     exportBtn.disabled = false;
