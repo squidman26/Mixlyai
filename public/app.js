@@ -214,6 +214,7 @@ async function loadCredits() {
     const data = await api("/api/credits");
     creditStatus = data;
     lastCreditsPanelData = data;
+    syncSelectedPurchaseTier(data);
     renderAuth(currentUser, creditStatus);
     renderCreditsPanel();
     await syncChatAccess();
@@ -221,6 +222,18 @@ async function loadCredits() {
     creditsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
   }
 }
+
+const PAID_PLAN_DETAILS = {
+  basic: {
+    tagline: "Solid balance for regular playlist saves",
+    perSave: 5,
+  },
+  pro: {
+    tagline: "Best value for heavy curators",
+    perSave: 5,
+    featured: true,
+  },
+};
 
 function isPaidTier(tierId) {
   return tierId === "basic" || tierId === "pro";
@@ -233,6 +246,24 @@ function isTierSelectable(tier, data) {
   return isPaidTier(tier.id);
 }
 
+function getUpgradableTiers(data) {
+  return (data.tiers || []).filter((tier) => isTierSelectable(tier, data));
+}
+
+function getDefaultPurchaseTier(data) {
+  const upgradable = getUpgradableTiers(data);
+  if (!upgradable.length) return null;
+  return upgradable.find((tier) => tier.id === "pro")?.id ?? upgradable[0].id;
+}
+
+function syncSelectedPurchaseTier(data) {
+  const upgradable = getUpgradableTiers(data);
+  const stillValid = upgradable.some((tier) => tier.id === selectedPurchaseTier);
+  if (!stillValid) {
+    selectedPurchaseTier = getDefaultPurchaseTier(data);
+  }
+}
+
 function getSelectedTier(data) {
   return (data.tiers || []).find((tier) => tier.id === selectedPurchaseTier) ?? null;
 }
@@ -242,17 +273,14 @@ function shouldShowCheckout(data, tierId) {
   return isPaidTier(tierId);
 }
 
-function renderTierCard(tier, data) {
+function renderFreeTierCard(tier, data) {
   const isCurrent = tier.id === data.tier;
   const isSelected = tier.id === selectedPurchaseTier;
-  const selectable = isTierSelectable(tier, data);
   const statusLabel = data.unlimited
     ? ""
     : isCurrent
       ? "Current plan"
-      : tier.id === "free"
-        ? "Starter"
-        : "Upgrade";
+      : "Starter";
 
   const cardBody = `
     <div class="tier-card-top">
@@ -263,62 +291,103 @@ function renderTierCard(tier, data) {
     <div class="tier-credits">${tier.credits.toLocaleString()} credits</div>
     ${isSelected ? '<span class="tier-selected-mark" aria-hidden="true">Selected</span>' : ""}`;
 
-  if (!selectable) {
-    return `
-      <div class="tier-card tier-card--static${isCurrent ? " current" : ""}${tier.id === "free" ? " tier-card--free" : ""}">
-        ${cardBody}
-      </div>`;
-  }
+  return `
+    <div class="tier-card tier-card--static${isCurrent ? " current" : ""} tier-card--free">
+      ${cardBody}
+    </div>`;
+}
+
+function renderPaidPlanCard(tier, data) {
+  const isSelected = tier.id === selectedPurchaseTier;
+  const details = PAID_PLAN_DETAILS[tier.id] ?? {};
+  const playlistSaves = Math.floor(tier.credits / (details.perSave || 5));
 
   return `
     <button
-      class="tier-card tier-select-btn${isSelected ? " selected" : ""}"
+      class="upgrade-plan-card${isSelected ? " selected" : ""}${details.featured ? " featured" : ""}"
       data-tier="${tier.id}"
       type="button"
       aria-pressed="${isSelected}"
     >
-      ${cardBody}
+      <span class="upgrade-plan-radio" aria-hidden="true"></span>
+      ${details.featured ? '<span class="upgrade-plan-badge">Best value</span>' : ""}
+      <h4 class="upgrade-plan-name">${escapeHtml(tier.name)}</h4>
+      <div class="upgrade-plan-price">${escapeHtml(tier.priceLabel)}</div>
+      <div class="upgrade-plan-credits">${tier.credits.toLocaleString()} credits</div>
+      <p class="upgrade-plan-tagline">${escapeHtml(details.tagline || "")}</p>
+      <p class="upgrade-plan-meta muted">About ${playlistSaves.toLocaleString()} playlist saves</p>
     </button>`;
 }
 
-function renderCreditsCheckout(data) {
-  const selected = getSelectedTier(data);
-  if (!shouldShowCheckout(data, selected?.id) || !selected) {
-    return `<div class="credits-checkout credits-checkout--hidden" id="creditsCheckout" hidden></div>`;
+function renderPaidPlanPicker(data) {
+  const upgradable = getUpgradableTiers(data);
+  const currentPaidTier = (data.tiers || []).find(
+    (tier) => isPaidTier(tier.id) && tier.id === data.tier
+  );
+
+  if (data.unlimited) {
+    return `
+      <div class="upgrade-plans upgrade-plans--disabled">
+        <div class="upgrade-plans-header">
+          <h4 class="upgrade-plans-title">Upgrade plans</h4>
+          <p class="upgrade-plans-desc muted">Your account already has unlimited credits.</p>
+        </div>
+      </div>`;
   }
 
+  if (!upgradable.length) {
+    return `
+      <div class="upgrade-plans upgrade-plans--complete">
+        <div class="upgrade-plans-header">
+          <h4 class="upgrade-plans-title">Upgrade plans</h4>
+          <p class="upgrade-plans-desc muted">You are on the ${escapeHtml(currentPaidTier?.name || data.tierName)} plan.</p>
+        </div>
+      </div>`;
+  }
+
+  const planCards = upgradable.map((tier) => renderPaidPlanCard(tier, data)).join("");
+  const selected = getSelectedTier(data);
   const squareReady = Boolean(data.squareConfigured);
+  const checkoutVisible = shouldShowCheckout(data, selected?.id) && selected;
 
   return `
-    <div class="credits-checkout" id="creditsCheckout">
-      <div class="credits-checkout-copy">
-        <span class="credits-checkout-label">Selected plan</span>
-        <strong>${escapeHtml(selected.name)} — ${escapeHtml(selected.priceLabel)}</strong>
-        <span class="muted">${selected.credits.toLocaleString()} credits after purchase</span>
+    <div class="upgrade-plans">
+      <div class="upgrade-plans-header">
+        <h4 class="upgrade-plans-title">Upgrade plans</h4>
+        <p class="upgrade-plans-desc muted">Pick Basic or Pro, then continue to Square checkout.</p>
       </div>
-      <div class="credits-checkout-action">
-        <button
-          class="btn btn-primary credits-pay-btn"
-          id="payWithSquareBtn"
-          type="button"
-          ${squareReady ? "" : "disabled"}
-        >
-          Pay with Square
-        </button>
-        ${
-          squareReady
-            ? ""
-            : '<p class="credits-checkout-message muted">Square checkout is unavailable right now.</p>'
-        }
+      <div class="upgrade-plans-grid" role="radiogroup" aria-label="Upgrade plans">
+        ${planCards}
+      </div>
+      <div class="upgrade-checkout${checkoutVisible ? "" : " upgrade-checkout--hidden"}" id="creditsCheckout"${checkoutVisible ? "" : " hidden"}>
+        <div class="upgrade-checkout-copy">
+          <span class="upgrade-checkout-label">Your selection</span>
+          <strong>${checkoutVisible ? `${escapeHtml(selected.name)} — ${escapeHtml(selected.priceLabel)}` : ""}</strong>
+          <span class="muted">${checkoutVisible ? `${selected.credits.toLocaleString()} credits after purchase` : ""}</span>
+        </div>
+        <div class="upgrade-checkout-action">
+          <button
+            class="btn btn-primary credits-pay-btn"
+            id="payWithSquareBtn"
+            type="button"
+            ${squareReady && checkoutVisible ? "" : "disabled"}
+          >
+            Pay with Square
+          </button>
+          ${
+            squareReady || !checkoutVisible
+              ? ""
+              : '<p class="upgrade-checkout-message muted">Square checkout is unavailable right now.</p>'
+          }
+        </div>
       </div>
     </div>`;
 }
 
 function bindCreditsPanelEvents() {
-  creditsPanel.querySelectorAll(".tier-select-btn").forEach((btn) => {
+  creditsPanel.querySelectorAll(".upgrade-plan-card").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const tierId = btn.dataset.tier;
-      selectedPurchaseTier = selectedPurchaseTier === tierId ? null : tierId;
+      selectedPurchaseTier = btn.dataset.tier;
       renderCreditsPanel();
     });
   });
@@ -336,14 +405,10 @@ function renderCreditsPanel() {
     ? "Unlimited"
     : `${data.credits} credits remaining`;
 
-  if (
-    selectedPurchaseTier &&
-    !(data.tiers || []).some((tier) => isTierSelectable(tier, data) && tier.id === selectedPurchaseTier)
-  ) {
-    selectedPurchaseTier = null;
-  }
+  syncSelectedPurchaseTier(data);
 
-  const tierCards = (data.tiers || []).map((tier) => renderTierCard(tier, data)).join("");
+  const freeTier = (data.tiers || []).find((tier) => tier.id === "free");
+  const freeTierCard = freeTier ? renderFreeTierCard(freeTier, data) : "";
 
   creditsPanel.innerHTML = `
     <div class="credits-summary">
@@ -356,11 +421,10 @@ function renderCreditsPanel() {
       </div>
     </div>
     <div class="credits-plans">
-      <h4 class="credits-plans-title">Choose a plan</h4>
-      <p class="credits-plans-desc muted">Select Basic or Pro to upgrade. Checkout unlocks after you pick a paid plan.</p>
-      <div class="tier-grid">${tierCards}</div>
+      <h4 class="credits-plans-title">Starter plan</h4>
+      <div class="tier-grid tier-grid--starter">${freeTierCard}</div>
     </div>
-    ${renderCreditsCheckout(data)}
+    ${renderPaidPlanPicker(data)}
     <p class="credits-note">Credits refresh to your tier allowance after purchase.</p>
     <div class="credit-history" id="creditHistory"></div>`;
 

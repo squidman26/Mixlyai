@@ -711,6 +711,10 @@ body {
   gap: 1rem;
 }
 
+.tier-grid--starter {
+  grid-template-columns: minmax(180px, 280px);
+}
+
 .tier-card {
   padding: 1.25rem;
   border-radius: var(--radius);
@@ -804,29 +808,159 @@ body {
   color: #d8b4fe;
 }
 
-.credits-checkout {
+.upgrade-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.upgrade-plans--disabled,
+.upgrade-plans--complete {
+  gap: 0.5rem;
+}
+
+.upgrade-plans-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.upgrade-plans-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.upgrade-plans-desc {
+  font-size: 0.9rem;
+}
+
+.upgrade-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.upgrade-plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.upgrade-plan-card:hover {
+  border-color: var(--accent-border);
+  background: #15101f;
+}
+
+.upgrade-plan-card:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.upgrade-plan-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-border);
+  background: linear-gradient(180deg, rgba(147, 51, 234, 0.14), var(--surface-2));
+}
+
+.upgrade-plan-card.featured {
+  border-color: rgba(147, 51, 234, 0.45);
+}
+
+.upgrade-plan-radio {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 2px solid var(--muted);
+  align-self: flex-start;
+}
+
+.upgrade-plan-card.selected .upgrade-plan-radio {
+  border-color: var(--accent-light);
+  background: radial-gradient(circle at center, var(--accent-light) 0 38%, transparent 40%);
+}
+
+.upgrade-plan-badge {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-border);
+  color: #d8b4fe;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.upgrade-plan-name {
+  font-size: 1.1rem;
+  padding-right: 4.5rem;
+}
+
+.upgrade-plan-price {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.upgrade-plan-credits {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #d8b4fe;
+}
+
+.upgrade-plan-tagline {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.upgrade-plan-meta {
+  margin-top: auto;
+  font-size: 0.82rem;
+}
+
+.upgrade-checkout {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  padding: 1.25rem;
-  border-radius: var(--radius);
-  background: var(--surface-2);
+  padding: 1rem 1.1rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: rgba(147, 51, 234, 0.08);
   border: 1px solid var(--accent-border);
 }
 
-.credits-checkout--hidden {
+.upgrade-checkout--hidden {
   display: none;
 }
 
-.credits-checkout-copy {
+.upgrade-checkout-copy {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
 }
 
-.credits-checkout-label {
+.upgrade-checkout-label {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -834,14 +968,14 @@ body {
   color: var(--muted);
 }
 
-.credits-checkout-action {
+.upgrade-checkout-action {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
 }
 
-.credits-checkout-message {
+.upgrade-checkout-message {
   margin: 0;
   font-size: 0.82rem;
   text-align: right;
@@ -1157,16 +1291,20 @@ body {
     bottom: calc(var(--mobile-nav-h) + 0.75rem);
   }
 
-  .credits-checkout {
+  .upgrade-plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upgrade-checkout {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .credits-checkout-action {
+  .upgrade-checkout-action {
     align-items: stretch;
   }
 
-  .credits-checkout-message {
+  .upgrade-checkout-message {
     text-align: left;
   }
 
