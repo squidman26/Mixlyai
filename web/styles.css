@@ -155,6 +155,10 @@ body {
   letter-spacing: 0.01em;
 }
 
+.gate-card .brand-title {
+  margin-bottom: 0.35rem;
+}
+
 /* ── Sidebar (left rail) ── */
 
 .sidebar {
@@ -584,6 +588,69 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  padding: 1.5rem;
+}
+
+.gate-card {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  padding: 2rem 1.5rem;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.gate-logo {
+  margin: 0 auto 1rem;
+}
+
+.gate-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+#gateForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#gateCode {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  letter-spacing: 0.15em;
+}
+
+#gateCode:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.gate-btn {
+  width: 100%;
+}
+
+.gate-error {
+  margin-top: 0.85rem;
+  color: #c084fc;
+  font-size: 0.85rem;
 }
 
 /* ── Credits ── */

@@ -12,6 +12,7 @@ import {
   readYoutubeOAuthPending,
 } from "../../lib/google-auth.js";
 import { getSession, json, readJsonBody, redirect, requireMethod } from "../../lib/api.js";
+import { requireAccess } from "../../lib/gate.js";
 import { isSquareConfigured } from "../../lib/square.js";
 
 async function handleSignup(req, res) {
@@ -220,6 +221,8 @@ export default async function handler(req, res) {
     await handleYoutubeCallback(req, res);
     return;
   }
+
+  if (!requireAccess(req, res)) return;
 
   switch (action) {
     case "signup":
