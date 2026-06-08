@@ -43,6 +43,7 @@ let lastExportCsv = "";
 let authenticated = false;
 let chatStarted = false;
 let creditStatus = null;
+let selectedPurchaseTier = null;
 let currentUser = null;
 let youtubeConnected = false;
 let chatLockAction = () => openAuthModal("signin");
@@ -219,31 +220,96 @@ async function loadCredits() {
   }
 }
 
+function canPurchaseTier(data, tierId) {
+  if (!tierId || tierId === "free" || data.unlimited) return false;
+  return tierId !== data.tier;
+}
+
+function getSelectedTier(data) {
+  return (data.tiers || []).find((tier) => tier.id === selectedPurchaseTier) ?? null;
+}
+
+function renderCreditsCheckout(data) {
+  const selected = getSelectedTier(data);
+  const showCheckout = canPurchaseTier(data, selected?.id);
+
+  if (!showCheckout || !selected) {
+    return `<div class="credits-checkout credits-checkout--hidden" id="creditsCheckout" hidden></div>`;
+  }
+
+  if (!data.squareConfigured) {
+    return `
+      <div class="credits-checkout" id="creditsCheckout">
+        <p class="credits-checkout-message muted">Square checkout is unavailable right now. Try again later.</p>
+      </div>`;
+  }
+
+  return `
+    <div class="credits-checkout" id="creditsCheckout">
+      <div class="credits-checkout-copy">
+        <span class="credits-checkout-label">Selected plan</span>
+        <strong>${escapeHtml(selected.name)} — ${escapeHtml(selected.priceLabel)}</strong>
+        <span class="muted">${selected.credits.toLocaleString()} credits after purchase</span>
+      </div>
+      <button class="btn btn-primary credits-pay-btn" id="payWithSquareBtn" type="button">
+        Pay with Square
+      </button>
+    </div>`;
+}
+
+function bindCreditsPanelEvents(data) {
+  creditsPanel.querySelectorAll(".tier-select-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tierId = btn.dataset.tier;
+      selectedPurchaseTier = selectedPurchaseTier === tierId ? null : tierId;
+      renderCreditsPanel(data);
+    });
+  });
+
+  document.getElementById("payWithSquareBtn")?.addEventListener("click", () => {
+    if (selectedPurchaseTier) startCheckout(selectedPurchaseTier);
+  });
+}
+
 function renderCreditsPanel(data) {
   const balanceText = data.unlimited
     ? "Unlimited"
     : `${data.credits} credits remaining`;
 
+  if (
+    selectedPurchaseTier &&
+    !(data.tiers || []).some((tier) => tier.id === selectedPurchaseTier)
+  ) {
+    selectedPurchaseTier = null;
+  }
+
   const tierCards = (data.tiers || [])
     .map((tier) => {
       const isCurrent = tier.id === data.tier;
-      const isPaid = tier.id !== "free";
-      const action =
-        data.unlimited || isCurrent
-          ? `<span class="muted">${isCurrent ? "Current plan" : "Included"}</span>`
-          : isPaid && data.squareConfigured
-            ? `<button class="btn btn-primary buy-tier-btn" data-tier="${tier.id}" type="button">Buy with Square</button>`
-            : isPaid
-              ? `<span class="muted">Square checkout unavailable</span>`
-              : `<span class="muted">Default plan</span>`;
+      const isSelected = tier.id === selectedPurchaseTier;
+      const statusLabel = data.unlimited
+        ? "Included"
+        : isCurrent
+          ? "Current plan"
+          : tier.id === "free"
+            ? "Starter"
+            : "Upgrade";
 
       return `
-        <div class="tier-card${isCurrent ? " current" : ""}">
-          <h4>${escapeHtml(tier.name)}</h4>
+        <button
+          class="tier-card tier-select-btn${isCurrent ? " current" : ""}${isSelected ? " selected" : ""}"
+          data-tier="${tier.id}"
+          type="button"
+          aria-pressed="${isSelected}"
+        >
+          <div class="tier-card-top">
+            <h4>${escapeHtml(tier.name)}</h4>
+            <span class="tier-status">${statusLabel}</span>
+          </div>
           <div class="tier-price">${escapeHtml(tier.priceLabel)}</div>
-          <div class="muted">${tier.credits.toLocaleString()} credits</div>
-          ${action}
-        </div>`;
+          <div class="tier-credits">${tier.credits.toLocaleString()} credits</div>
+          ${isSelected ? '<span class="tier-selected-mark" aria-hidden="true">Selected</span>' : ""}
+        </button>`;
     })
     .join("");
 
@@ -257,8 +323,13 @@ function renderCreditsPanel(data) {
         <span>Save playlist: ${data.costs.exportPlaylist} credits</span>
       </div>
     </div>
-    <div class="tier-grid">${tierCards}</div>
-    <p class="credits-note">Paid plans are processed securely through Square. Credits refresh to your tier allowance after purchase.</p>
+    <div class="credits-plans">
+      <h4 class="credits-plans-title">Choose a plan</h4>
+      <p class="credits-plans-desc muted">Tap a plan below to select it. Paid upgrades checkout with Square.</p>
+      <div class="tier-grid">${tierCards}</div>
+    </div>
+    ${renderCreditsCheckout(data)}
+    <p class="credits-note">Credits refresh to your tier allowance after purchase.</p>
     <div class="credit-history" id="creditHistory"></div>`;
 
   const history = document.getElementById("creditHistory");
@@ -279,9 +350,7 @@ function renderCreditsPanel(data) {
       </div>`;
   }
 
-  creditsPanel.querySelectorAll(".buy-tier-btn").forEach((btn) => {
-    btn.addEventListener("click", () => startCheckout(btn.dataset.tier));
-  });
+  bindCreditsPanelEvents(data);
 }
 
 async function startCheckout(tierId) {
@@ -324,6 +393,7 @@ async function logout() {
   }
   authenticated = false;
   creditStatus = null;
+  selectedPurchaseTier = null;
   currentUser = null;
   renderAuth(null, null);
   lockChat();
@@ -798,6 +868,7 @@ authModal?.addEventListener("click", (e) => {
   const params = new URLSearchParams(window.location.search);
 
   if (params.get("purchase") === "success") {
+    selectedPurchaseTier = null;
     showToast("Purchase complete! Your credits are updating.");
     openCreditsPanel();
   }
