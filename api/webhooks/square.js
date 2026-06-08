@@ -13,7 +13,7 @@ async function readRawBody(req) {
 }
 
 function parsePaymentNote(note) {
-  if (!note || (!note.startsWith("mixly:") && !note.startsWith("spotifybot:"))) {
+  if (!note || !note.startsWith("mixly:")) {
     return null;
   }
   const [, accountId, tierId] = note.split(":");
@@ -60,7 +60,7 @@ async function handlePaymentUpdated(payment) {
   const order = await fetchSquareOrder(payment.order_id ?? payment.orderId);
   const meta = resolvePurchaseMeta(payment, order);
   if (!meta) {
-    console.warn("Square payment completed without Spotifybot metadata:", payment.id);
+    console.warn("Square payment completed without Mixly metadata:", payment.id);
     return;
   }
 

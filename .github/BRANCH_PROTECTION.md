@@ -11,4 +11,4 @@ The cloud agent cannot enable branch protection on this repository (admin access
    - **Do not allow bypassing the above settings** (recommended)
    - **Restrict who can push to matching branches** (optional)
 
-Direct link: https://github.com/squidman26/spotifybot/settings/branches
+Direct link: https://github.com/squidman26/Mixlyai/settings/branches
