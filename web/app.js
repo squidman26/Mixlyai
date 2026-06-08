@@ -164,7 +164,7 @@ function updateCreditsTabLabel(credits) {
       el.dataset.defaultLabel = el.textContent;
     }
     el.textContent = credits?.unlimited
-      ? "DEVELOPER UNLIMITED TOKENS"
+      ? "Unlimited"
       : el.dataset.defaultLabel;
   });
 }
@@ -193,7 +193,7 @@ function renderAuth(user, credits) {
       ? `<span class="user-plan-label">${escapeHtml(credits.planLabel)}</span>`
       : "";
     const creditBadge = credits?.unlimited
-      ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">DEVELOPER UNLIMITED TOKENS</span>'
+      ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">Unlimited</span>'
       : credits
         ? `<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">${credits.credits} credits</span>`
         : "";
@@ -475,8 +475,8 @@ function renderCreditsPanel() {
     selectedPurchaseTier = null;
     creditsPanel.innerHTML = `
       <div class="credits-developer-panel">
-        <div class="credits-developer-title">DEVELOPER UNLIMITED TOKENS</div>
-        <p class="muted">Developer access is active. Credit limits are bypassed on this account.</p>
+        <div class="credits-developer-title">Unlimited</div>
+        <p class="muted">Credit limits are bypassed on this account.</p>
       </div>`;
     return;
   }
