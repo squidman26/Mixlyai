@@ -730,7 +730,20 @@ body {
     background 0.15s ease;
 }
 
-.tier-card:hover {
+.tier-card--static {
+  cursor: default;
+}
+
+.tier-card--static:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.tier-card--free {
+  opacity: 0.92;
+}
+
+.tier-card:not(.tier-card--static):hover {
   border-color: var(--accent-border);
   background: var(--surface-2);
 }
@@ -821,13 +834,27 @@ body {
   color: var(--muted);
 }
 
+.credits-checkout-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
 .credits-checkout-message {
   margin: 0;
+  font-size: 0.82rem;
+  text-align: right;
 }
 
 .credits-pay-btn {
   min-width: 11rem;
   white-space: nowrap;
+}
+
+.credits-pay-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .credits-note {
@@ -1133,6 +1160,14 @@ body {
   .credits-checkout {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .credits-checkout-action {
+    align-items: stretch;
+  }
+
+  .credits-checkout-message {
+    text-align: left;
   }
 
   .credits-pay-btn {
