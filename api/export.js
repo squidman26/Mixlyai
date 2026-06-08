@@ -9,14 +9,17 @@ import {
 } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
 import { CREDIT_COSTS, deductCredits } from "../lib/credits.js";
+import { applyPlanToYoutube } from "../lib/youtube-apply.js";
 import { normalizePlan } from "../src/plan.js";
 
-function tracksToCsv(tracks) {
-  const header = "artist,title";
+function tracksToCsv(tracks, { includeYoutube = false } = {}) {
+  const header = includeYoutube ? "artist,title,youtube_url" : "artist,title";
   const rows = tracks.map((t) => {
     const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
     const title = `"${String(t.title).replace(/"/g, '""')}"`;
-    return `${artist},${title}`;
+    if (!includeYoutube) return `${artist},${title}`;
+    const url = `"${String(t.youtubeUrl || "").replace(/"/g, '""')}"`;
+    return `${artist},${title},${url}`;
   });
   return [header, ...rows].join("\n");
 }
@@ -36,6 +39,7 @@ export default async function handler(req, res) {
     }
 
     const plan = normalizePlan(body.plan);
+    const applyTo = body.applyTo?.trim().toLowerCase();
 
     const creditResult = await deductCredits(
       session.accountId,
@@ -47,7 +51,29 @@ export default async function handler(req, res) {
       return;
     }
 
-    const saved = await savePlaylist(session.accountId, plan);
+    let youtube = null;
+    let tracksForSave = plan.tracks;
+
+    if (applyTo === "youtube") {
+      youtube = await applyPlanToYoutube(session.accountId, plan);
+      tracksForSave = youtube.tracksJson;
+    } else if (applyTo) {
+      json(res, 400, { error: `Unsupported apply target: ${applyTo}` });
+      return;
+    }
+
+    const saved = await savePlaylist(
+      session.accountId,
+      plan,
+      applyTo === "youtube"
+        ? {
+            tracksJson: tracksForSave,
+            provider: "youtube",
+            externalPlaylistId: youtube?.playlist?.id ?? null,
+            externalPlaylistUrl: youtube?.playlist?.url ?? null,
+          }
+        : {}
+    );
 
     json(res, 200, {
       saved: Boolean(saved),
@@ -61,8 +87,9 @@ export default async function handler(req, res) {
             externalPlaylistUrl: saved.external_playlist_url ?? null,
           }
         : null,
-      csv: tracksToCsv(plan.tracks),
-      json: plan.tracks,
+      csv: tracksToCsv(tracksForSave, { includeYoutube: Boolean(youtube) }),
+      json: tracksForSave,
+      youtube,
       credits: creditResult.unlimited ? null : creditResult.credits,
       unlimitedCredits: creditResult.unlimited,
     });
