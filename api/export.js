@@ -7,7 +7,6 @@ import {
   requireMethod,
   respondInsufficientCredits,
 } from "../lib/api.js";
-import { requireAccess } from "../lib/gate.js";
 import { CREDIT_COSTS, deductCredits } from "../lib/credits.js";
 import { applyPlanToYoutube } from "../lib/youtube-apply.js";
 import { normalizePlan } from "../src/plan.js";
@@ -26,7 +25,6 @@ function tracksToCsv(tracks, { includeYoutube = false } = {}) {
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "POST")) return;
-  if (!requireAccess(req, res)) return;
 
   const { session } = getSession(req, res);
   if (!requireAppSession(req, res, session)) return;
