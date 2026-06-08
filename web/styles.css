@@ -437,6 +437,16 @@ body {
   background: var(--accent-light);
 }
 
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+}
+
 .btn-ghost {
   background: var(--surface-2);
   color: var(--text);
@@ -1043,6 +1053,28 @@ body {
 .auth-error {
   color: #c084fc;
   font-size: 0.85rem;
+}
+
+.auth-hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.auth-link-btn {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-resend {
+  width: 100%;
 }
 
 /* ── Connections ── */

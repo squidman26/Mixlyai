@@ -20,7 +20,11 @@ AI YouTube playlist maker — chat with Claude to design playlists, then save an
 
 ### Auth
 
-Users sign up with email, username, and password. Sessions are stored in encrypted cookies.
+Users sign up with email, username, and password. New accounts must verify their email before signing in. Password reset links are sent by email.
+
+Set `RESEND_API_KEY` (and optionally `EMAIL_FROM` with a verified domain) for verification and reset emails. Without it, sign-up still works but emails are only logged on the server.
+
+Sessions are stored in encrypted cookies.
 
 ### Credits
 
