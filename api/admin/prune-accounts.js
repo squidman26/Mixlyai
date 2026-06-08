@@ -4,11 +4,11 @@ import { getAccessCodeFromRequest, isGateEnabled, verifyAccessCode } from "../..
 
 function matchesKeepAccount(account) {
   const keepName = (process.env.KEEP_ACCOUNT_NAME || "Ayden").trim().toLowerCase();
-  const fields = [account.display_name, account.username, account.email]
+  const fields = [account.display_name, account.username]
     .filter(Boolean)
     .map((value) => String(value).toLowerCase());
 
-  return fields.some((value) => value === keepName || value.includes(keepName));
+  return fields.some((value) => value === keepName);
 }
 
 function requireAdminAccess(req, res) {

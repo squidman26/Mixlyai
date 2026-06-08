@@ -21,13 +21,11 @@ const KEEP_NAME = (process.env.KEEP_ACCOUNT_NAME || "Ayden").trim().toLowerCase(
 const DRY_RUN = process.argv.includes("--dry-run");
 
 function matchesKeepAccount(account) {
-  const fields = [account.display_name, account.username, account.email]
+  const fields = [account.display_name, account.username]
     .filter(Boolean)
     .map((v) => String(v).toLowerCase());
 
-  return fields.some(
-    (value) => value === KEEP_NAME || value.includes(KEEP_NAME)
-  );
+  return fields.some((value) => value === KEEP_NAME);
 }
 
 async function main() {

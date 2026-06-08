@@ -8,11 +8,11 @@ import { json, readJsonBody, requireMethod } from "../lib/api.js";
 
 function matchesKeepAccount(account) {
   const keepName = (process.env.KEEP_ACCOUNT_NAME || "Ayden").trim().toLowerCase();
-  const fields = [account.display_name, account.username, account.email]
+  const fields = [account.display_name, account.username]
     .filter(Boolean)
     .map((value) => String(value).toLowerCase());
 
-  return fields.some((value) => value === keepName || value.includes(keepName));
+  return fields.some((value) => value === keepName);
 }
 
 async function pruneTestAccounts() {
@@ -82,6 +82,18 @@ export default async function handler(req, res) {
         });
       } catch (err) {
         json(res, 500, { error: err.message || "Failed to prune accounts" });
+      }
+      return;
+    }
+
+    if (body.action === "delete-account-ids" && Array.isArray(body.ids) && body.ids.length > 0) {
+      try {
+        const supabase = getSupabaseAdmin();
+        const { error: deleteError } = await supabase.from("accounts").delete().in("id", body.ids);
+        if (deleteError) throw new Error(deleteError.message);
+        json(res, 200, { ok: true, deleted: body.ids.length, ids: body.ids });
+      } catch (err) {
+        json(res, 500, { error: err.message || "Failed to delete accounts" });
       }
       return;
     }
