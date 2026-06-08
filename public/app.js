@@ -11,11 +11,16 @@ const signInForm = document.getElementById("signInForm");
 const signUpForm = document.getElementById("signUpForm");
 const signInLogin = document.getElementById("signInLogin");
 const signInPassword = document.getElementById("signInPassword");
+const signInRemember = document.getElementById("signInRemember");
 const signInError = document.getElementById("signInError");
 const signUpEmail = document.getElementById("signUpEmail");
 const signUpUsername = document.getElementById("signUpUsername");
 const signUpPassword = document.getElementById("signUpPassword");
+const signUpRemember = document.getElementById("signUpRemember");
 const signUpError = document.getElementById("signUpError");
+
+const REMEMBER_LOGIN_KEY = "mixly_remember_login";
+const SAVED_LOGIN_KEY = "mixly_saved_login";
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const exportBtn = document.getElementById("exportBtn");
@@ -73,8 +78,40 @@ async function api(path, options = {}) {
   return data;
 }
 
+function loadSavedSignInPrefs() {
+  try {
+    const remember = localStorage.getItem(REMEMBER_LOGIN_KEY);
+    if (remember != null && signInRemember) {
+      signInRemember.checked = remember === "1";
+    }
+    const savedLogin = localStorage.getItem(SAVED_LOGIN_KEY);
+    if (savedLogin && signInLogin && !signInLogin.value) {
+      signInLogin.value = savedLogin;
+    }
+    if (signUpRemember) {
+      signUpRemember.checked = signInRemember?.checked ?? true;
+    }
+  } catch {
+    /* private browsing */
+  }
+}
+
+function persistSignInPrefs(login, remember) {
+  try {
+    localStorage.setItem(REMEMBER_LOGIN_KEY, remember ? "1" : "0");
+    if (remember && login) {
+      localStorage.setItem(SAVED_LOGIN_KEY, login);
+    } else {
+      localStorage.removeItem(SAVED_LOGIN_KEY);
+    }
+  } catch {
+    /* private browsing */
+  }
+}
+
 function openAuthModal(mode = "signin") {
   authModal.classList.remove("hidden");
+  loadSavedSignInPrefs();
   showAuthTab(mode);
 }
 
@@ -922,13 +959,17 @@ async function handleSignIn(e) {
   e.preventDefault();
   signInError.classList.add("hidden");
   try {
+    const login = signInLogin.value.trim();
+    const remember = signInRemember?.checked ?? true;
     const data = await api("/api/auth/signin", {
       method: "POST",
       body: JSON.stringify({
-        login: signInLogin.value.trim(),
+        login,
         password: signInPassword.value,
+        remember,
       }),
     });
+    persistSignInPrefs(login, remember);
     authenticated = true;
     currentUser = data.user;
     closeAuthModalPanel();
@@ -946,14 +987,17 @@ async function handleSignUp(e) {
   e.preventDefault();
   signUpError.classList.add("hidden");
   try {
+    const remember = signUpRemember?.checked ?? true;
     const data = await api("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify({
         email: signUpEmail.value.trim(),
         username: signUpUsername.value.trim(),
         password: signUpPassword.value,
+        remember,
       }),
     });
+    persistSignInPrefs(signUpUsername.value.trim(), remember);
     authenticated = true;
     currentUser = data.user;
     closeAuthModalPanel();

@@ -23,6 +23,7 @@ async function handleSignup(req, res) {
       email: body.email,
       username: body.username,
       password: body.password,
+      remember: body.remember !== false,
     });
 
     const { save } = getSession(req, res);
@@ -50,6 +51,7 @@ async function handleSignin(req, res) {
     const session = await signIn({
       login: body.login,
       password: body.password,
+      remember: body.remember !== false,
     });
 
     if (!session) {
@@ -84,11 +86,13 @@ function handleLogout(req, res) {
 async function handleStatus(req, res) {
   if (!requireMethod(req, res, "GET")) return;
 
-  const { session } = getSession(req, res);
+  const { session, save } = getSession(req, res);
   if (!isAppAuthenticated(session)) {
     json(res, 200, { authenticated: false });
     return;
   }
+
+  save(session);
 
   try {
     let account = await getAccountById(session.accountId);

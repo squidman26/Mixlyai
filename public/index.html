@@ -181,6 +181,10 @@
         <form class="auth-form" id="signInForm">
           <input id="signInLogin" type="text" placeholder="Email or username" autocomplete="username" required />
           <input id="signInPassword" type="password" placeholder="Password" autocomplete="current-password" required />
+          <label class="auth-remember">
+            <input id="signInRemember" type="checkbox" checked />
+            <span>Remember me</span>
+          </label>
           <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
           <p class="auth-error hidden" id="signInError"></p>
         </form>
@@ -188,6 +192,10 @@
           <input id="signUpEmail" type="email" placeholder="Email" autocomplete="email" required />
           <input id="signUpUsername" type="text" placeholder="Username" autocomplete="username" required />
           <input id="signUpPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required />
+          <label class="auth-remember">
+            <input id="signUpRemember" type="checkbox" checked />
+            <span>Remember me</span>
+          </label>
           <button class="btn btn-primary auth-submit" type="submit">Create account</button>
           <p class="auth-error hidden" id="signUpError"></p>
         </form>
