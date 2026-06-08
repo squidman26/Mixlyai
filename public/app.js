@@ -419,9 +419,10 @@ async function runExport({ applyTo } = {}) {
     });
 
     lastExportCsv = data.csv;
+    const itemCount = currentPlan.items?.length ?? currentPlan.tracks?.length ?? 0;
     const lines = [
       `Saved "${data.playlist?.name || currentPlan.playlist?.name}"`,
-      `${currentPlan.tracks?.length ?? 0} tracks`,
+      `${itemCount} item${itemCount === 1 ? "" : "s"}`,
     ];
 
     if (data.youtube) {
@@ -450,12 +451,18 @@ async function runExport({ applyTo } = {}) {
   }
 }
 
+function planItems(plan) {
+  return plan?.items ?? plan?.tracks ?? [];
+}
+
 function planToCsv(plan) {
-  const header = "artist,title";
-  const rows = (plan.tracks || []).map((t) => {
-    const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
-    const title = `"${String(t.title).replace(/"/g, '""')}"`;
-    return `${artist},${title}`;
+  const header = "type,artist,title,channel";
+  const rows = planItems(plan).map((item) => {
+    const type = `"${item.type === "video" ? "video" : "track"}"`;
+    const artist = `"${String(item.artist || "").replace(/"/g, '""')}"`;
+    const title = `"${String(item.title || "").replace(/"/g, '""')}"`;
+    const channel = `"${String(item.channel || "").replace(/"/g, '""')}"`;
+    return `${type},${artist},${title},${channel}`;
   });
   return [header, ...rows].join("\n");
 }
@@ -615,7 +622,7 @@ async function loadPlaylists() {
         (p) => `
       <div class="playlist-item">
         <strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${p.tracks} tracks${p.description ? ` · ${escapeHtml(p.description)}` : ""}${p.provider === "youtube" ? " · YouTube" : ""}</div>
+        <div class="muted">${p.tracks} item${p.tracks === 1 ? "" : "s"}${p.description ? ` · ${escapeHtml(p.description)}` : ""}${p.provider === "youtube" ? " · YouTube" : ""}</div>
         ${p.externalPlaylistUrl ? `<a class="playlist-link" href="${escapeHtml(p.externalPlaylistUrl)}" target="_blank" rel="noopener noreferrer">Open on YouTube</a>` : ""}
         <button class="btn btn-ghost copy-playlist-btn" data-id="${p.id}" type="button">Copy CSV</button>
       </div>`
@@ -626,11 +633,17 @@ async function loadPlaylists() {
       btn.addEventListener("click", async () => {
         const playlist = data.playlists.find((p) => p.id === btn.dataset.id);
         if (!playlist?.tracksJson) return;
-        const csv = ["artist,title", ...playlist.tracksJson.map((t) => {
-          const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
-          const title = `"${String(t.title).replace(/"/g, '""')}"`;
-          return `${artist},${title}`;
-        })].join("\n");
+        const csv = [
+          "type,artist,title,channel,youtube_url",
+          ...playlist.tracksJson.map((item) => {
+            const type = `"${item.type === "video" ? "video" : "track"}"`;
+            const artist = `"${String(item.artist || "").replace(/"/g, '""')}"`;
+            const title = `"${String(item.title || "").replace(/"/g, '""')}"`;
+            const channel = `"${String(item.channel || "").replace(/"/g, '""')}"`;
+            const url = `"${String(item.youtubeUrl || "").replace(/"/g, '""')}"`;
+            return `${type},${artist},${title},${channel},${url}`;
+          }),
+        ].join("\n");
         await navigator.clipboard.writeText(csv);
         showToast("CSV copied");
       });
