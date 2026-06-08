@@ -21,6 +21,7 @@ const signUpError = document.getElementById("signUpError");
 
 const REMEMBER_LOGIN_KEY = "mixly_remember_login";
 const SAVED_LOGIN_KEY = "mixly_saved_login";
+const ACCESS_CODE_KEY = "mixly_site_access_code";
 
 let activeAccessCode = "";
 const planModal = document.getElementById("planModal");
@@ -73,13 +74,29 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function readAccessCodeFromStorage() {
+  try {
+    return sessionStorage.getItem(ACCESS_CODE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 function getStoredAccessCode() {
   return activeAccessCode;
 }
 
 function setStoredAccessCode(code) {
   activeAccessCode = code || "";
+  try {
+    if (code) sessionStorage.setItem(ACCESS_CODE_KEY, code);
+    else sessionStorage.removeItem(ACCESS_CODE_KEY);
+  } catch {
+    /* private browsing */
+  }
 }
+
+activeAccessCode = readAccessCodeFromStorage();
 
 async function api(path, options = {}) {
   const code = getStoredAccessCode();
@@ -1104,9 +1121,16 @@ function showGate() {
 
 async function requireGateOnVisit() {
   try {
-    const data = await fetch("/api/access", { credentials: "same-origin" })
-      .then((res) => res.json());
-    if (!data.enabled) {
+    const headers = {};
+    const code = getStoredAccessCode();
+    if (code) headers["X-Site-Access-Code"] = code;
+
+    const data = await fetch("/api/access", {
+      credentials: "same-origin",
+      headers,
+    }).then((res) => res.json());
+
+    if (!data.enabled || data.unlocked) {
       showApp();
       return true;
     }
@@ -1197,7 +1221,13 @@ async function handlePurchaseReturn(tierId) {
   setupCreditsPanelEvents();
 
   const unlocked = await requireGateOnVisit();
-  if (!unlocked) return;
+  if (!unlocked) {
+    if (purchaseSuccess) {
+      gateError.textContent = "Enter your access code to finish applying your purchase.";
+      gateError.classList.remove("hidden");
+    }
+    return;
+  }
 
   await checkAuth();
   handleYoutubeConnectionResult();
