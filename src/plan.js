@@ -1,6 +1,14 @@
-import { rowsFromTracks } from "./csv.js";
+import {
+  formatItemLabel,
+  normalizePlanItems,
+  rowsFromItems,
+} from "./csv.js";
 
 const BLOCK_RE = /```playlist\s*([\s\S]*?)```/i;
+
+export function getPlanItems(plan) {
+  return plan?.items ?? plan?.tracks ?? [];
+}
 
 export function extractPlanFromMessage(text) {
   const match = text.match(BLOCK_RE);
@@ -23,33 +31,52 @@ export function normalizePlan(plan) {
   if (!plan.playlist?.name) {
     throw new Error("Plan must include playlist.name");
   }
-  if (!Array.isArray(plan.tracks) || plan.tracks.length === 0) {
-    throw new Error("Plan must include a non-empty tracks array");
+
+  const rawItems = getPlanItems(plan);
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    throw new Error("Plan must include a non-empty items array");
   }
+
+  const items = normalizePlanItems(rawItems);
 
   return {
     playlist: {
       name: plan.playlist.name,
       description: plan.playlist.description ?? "",
     },
-    tracks: plan.tracks,
-    _rows: rowsFromTracks(plan.tracks),
+    items,
+    tracks: items,
+    _rows: rowsFromItems(items),
   };
 }
 
 export function formatPlanSummary(plan) {
+  const items = getPlanItems(plan);
+  const trackCount = items.filter((item) => item.type !== "video").length;
+  const videoCount = items.filter((item) => item.type === "video").length;
   const lines = [];
+
   lines.push(`Name: ${plan.playlist.name}`);
   if (plan.playlist.description) {
     lines.push(`Description: ${plan.playlist.description}`);
   }
-  lines.push(`Tracks: ${plan.tracks.length}`);
-  const preview = plan.tracks.slice(0, 8);
-  for (const t of preview) {
-    lines.push(`  • ${t.artist} — ${t.title}`);
+
+  const countParts = [];
+  if (trackCount) countParts.push(`${trackCount} song${trackCount === 1 ? "" : "s"}`);
+  if (videoCount) countParts.push(`${videoCount} video${videoCount === 1 ? "" : "s"}`);
+  lines.push(`Items: ${items.length}${countParts.length ? ` (${countParts.join(", ")})` : ""}`);
+
+  const preview = items.slice(0, 8);
+  for (const item of preview) {
+    if (item.type === "video") {
+      lines.push(`  • [video] ${formatItemLabel(item)}`);
+    } else {
+      lines.push(`  • ${formatItemLabel(item)}`);
+    }
   }
-  if (plan.tracks.length > 8) {
-    lines.push(`  … and ${plan.tracks.length - 8} more`);
+  if (items.length > 8) {
+    lines.push(`  … and ${items.length - 8} more`);
   }
+
   return lines.join("\n");
 }

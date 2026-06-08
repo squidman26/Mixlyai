@@ -2,21 +2,13 @@ import { createInterface } from "readline/promises";
 import { stdin as input, stdout as output } from "process";
 import { chat } from "./claude.js";
 import { buildSystemPrompt } from "./prompt.js";
+import { itemsToCsv } from "./csv.js";
 import {
   extractPlanFromMessage,
   stripPlanBlock,
   formatPlanSummary,
+  getPlanItems,
 } from "./plan.js";
-
-function tracksToCsv(tracks) {
-  const header = "artist,title";
-  const rows = tracks.map((t) => {
-    const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
-    const title = `"${String(t.title).replace(/"/g, '""')}"`;
-    return `${artist},${title}`;
-  });
-  return [header, ...rows].join("\n");
-}
 
 async function promptExport(rl, plan, { defaultAction } = {}) {
   console.log("\n── Playlist ready ──");
@@ -34,12 +26,12 @@ async function promptExport(rl, plan, { defaultAction } = {}) {
   }
 
   if (answer === "e" || answer === "export") {
-    console.log("\n" + tracksToCsv(plan.tracks) + "\n");
+    console.log("\n" + itemsToCsv(getPlanItems(plan)) + "\n");
     return { exit: false, plan };
   }
 
   if (answer === "j" || answer === "json") {
-    console.log("\n" + JSON.stringify(plan.tracks, null, 2) + "\n");
+    console.log("\n" + JSON.stringify(getPlanItems(plan), null, 2) + "\n");
     return { exit: false, plan };
   }
 

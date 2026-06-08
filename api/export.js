@@ -10,19 +10,8 @@ import {
 import { requireAccess } from "../lib/gate.js";
 import { CREDIT_COSTS, deductCredits } from "../lib/credits.js";
 import { applyPlanToYoutube } from "../lib/youtube-apply.js";
-import { normalizePlan } from "../src/plan.js";
-
-function tracksToCsv(tracks, { includeYoutube = false } = {}) {
-  const header = includeYoutube ? "artist,title,youtube_url" : "artist,title";
-  const rows = tracks.map((t) => {
-    const artist = `"${String(t.artist).replace(/"/g, '""')}"`;
-    const title = `"${String(t.title).replace(/"/g, '""')}"`;
-    if (!includeYoutube) return `${artist},${title}`;
-    const url = `"${String(t.youtubeUrl || "").replace(/"/g, '""')}"`;
-    return `${artist},${title},${url}`;
-  });
-  return [header, ...rows].join("\n");
-}
+import { itemsToCsv } from "../src/csv.js";
+import { getPlanItems, normalizePlan } from "../src/plan.js";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "POST")) return;
@@ -52,11 +41,11 @@ export default async function handler(req, res) {
     }
 
     let youtube = null;
-    let tracksForSave = plan.tracks;
+    let itemsForSave = getPlanItems(plan);
 
     if (applyTo === "youtube") {
       youtube = await applyPlanToYoutube(session.accountId, plan);
-      tracksForSave = youtube.tracksJson;
+      itemsForSave = youtube.tracksJson;
     } else if (applyTo) {
       json(res, 400, { error: `Unsupported apply target: ${applyTo}` });
       return;
@@ -67,7 +56,7 @@ export default async function handler(req, res) {
       plan,
       applyTo === "youtube"
         ? {
-            tracksJson: tracksForSave,
+            tracksJson: itemsForSave,
             provider: "youtube",
             externalPlaylistId: youtube?.playlist?.id ?? null,
             externalPlaylistUrl: youtube?.playlist?.url ?? null,
@@ -87,8 +76,8 @@ export default async function handler(req, res) {
             externalPlaylistUrl: saved.external_playlist_url ?? null,
           }
         : null,
-      csv: tracksToCsv(tracksForSave, { includeYoutube: Boolean(youtube) }),
-      json: tracksForSave,
+      csv: itemsToCsv(itemsForSave, { includeYoutube: Boolean(youtube) }),
+      json: itemsForSave,
       youtube,
       credits: creditResult.unlimited ? null : creditResult.credits,
       unlimitedCredits: creditResult.unlimited,
