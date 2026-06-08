@@ -931,6 +931,11 @@ body {
   display: none;
   flex-shrink: 0;
   height: var(--mobile-nav-h);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 220;
   border-top: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(16px);
@@ -1016,7 +1021,7 @@ body {
 
   .panel-content,
   .panel-content--flush {
-    padding: 0 1rem 1rem;
+    padding: 0 1rem calc(1rem + var(--mobile-nav-h));
   }
 
   .toast {
