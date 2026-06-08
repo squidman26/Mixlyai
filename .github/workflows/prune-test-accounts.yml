@@ -1,0 +1,39 @@
+name: Prune test accounts
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run only (list, do not delete)"
+        required: false
+        default: "false"
+
+jobs:
+  prune:
+    name: Delete test accounts except Ayden
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Supabase client
+        run: npm install @supabase/supabase-js
+
+      - name: Prune test accounts
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: https://npkmlflciakpzkskkqvy.supabase.co
+          KEEP_ACCOUNT_NAME: Ayden
+        run: |
+          if [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "Missing SUPABASE_SECRET_KEY in GitHub Actions secrets."
+            exit 1
+          fi
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="--dry-run"
+          fi
+          node scripts/prune-test-accounts.mjs $ARGS
