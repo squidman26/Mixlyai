@@ -952,6 +952,22 @@ body {
   outline-offset: 1px;
 }
 
+.auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-remember input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+}
+
 .auth-submit {
   width: 100%;
   margin-top: 0.25rem;
