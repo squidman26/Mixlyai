@@ -349,6 +349,13 @@ function bindCreditsPanelEvents() {
       const tierId = btn.dataset.tier;
       selectedPurchaseTier = selectedPurchaseTier === tierId ? null : tierId;
       renderCreditsPanel();
+      if (selectedPurchaseTier) {
+        requestAnimationFrame(() => {
+          document
+            .getElementById("creditsCheckout")
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+      }
     });
   });
 
@@ -415,6 +422,14 @@ function renderCreditsPanel() {
 }
 
 async function startCheckout(tierId) {
+  const payBtn = document.getElementById("payWithSquareBtn");
+  const payLabel = payBtn?.textContent || "Pay with Square";
+
+  if (payBtn) {
+    payBtn.disabled = true;
+    payBtn.textContent = "Redirecting…";
+  }
+
   try {
     const data = await api("/api/credits", {
       method: "POST",
@@ -423,6 +438,10 @@ async function startCheckout(tierId) {
     window.location.href = data.url;
   } catch (err) {
     showToast(err.message, true);
+    if (payBtn) {
+      payBtn.disabled = !lastCreditsPanelData?.squareConfigured;
+      payBtn.textContent = payLabel;
+    }
   }
 }
 
