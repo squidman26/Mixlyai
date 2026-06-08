@@ -20,11 +20,10 @@ const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const exportBtn = document.getElementById("exportBtn");
 const applyYoutubeBtn = document.getElementById("applyYoutubeBtn");
+const connectYoutubeBtn = document.getElementById("connectYoutubeBtn");
 const copyCsvBtn = document.getElementById("copyCsvBtn");
 const dismissPlan = document.getElementById("dismissPlan");
 const exportResult = document.getElementById("exportResult");
-const planYoutubeHint = document.getElementById("planYoutubeHint");
-const planYoutubeConnectBtn = document.getElementById("planYoutubeConnectBtn");
 const playlistList = document.getElementById("playlistList");
 const refreshPlaylists = document.getElementById("refreshPlaylists");
 const creditsPanel = document.getElementById("creditsPanel");
@@ -143,11 +142,10 @@ async function refreshConnectionState() {
 }
 
 function updatePlanActions() {
-  const showYoutubeApply = youtubeConnected;
-  applyYoutubeBtn?.classList.toggle("hidden", !showYoutubeApply);
-  planYoutubeHint?.classList.toggle(
+  applyYoutubeBtn?.classList.toggle("hidden", !youtubeConnected);
+  connectYoutubeBtn?.classList.toggle(
     "hidden",
-    !authenticated || showYoutubeApply
+    !authenticated || youtubeConnected
   );
 }
 
@@ -765,7 +763,7 @@ chatForm.addEventListener("submit", (e) => {
 
 exportBtn.addEventListener("click", () => runExport());
 applyYoutubeBtn?.addEventListener("click", () => runExport({ applyTo: "youtube" }));
-planYoutubeConnectBtn?.addEventListener("click", () => {
+connectYoutubeBtn?.addEventListener("click", () => {
   planModal.classList.add("hidden");
   openConnectionsPanel();
 });
