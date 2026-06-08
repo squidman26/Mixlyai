@@ -21,6 +21,8 @@ const signUpError = document.getElementById("signUpError");
 
 const REMEMBER_LOGIN_KEY = "mixly_remember_login";
 const SAVED_LOGIN_KEY = "mixly_saved_login";
+
+let activeAccessCode = "";
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const exportBtn = document.getElementById("exportBtn");
@@ -34,7 +36,11 @@ const refreshPlaylists = document.getElementById("refreshPlaylists");
 const creditsPanel = document.getElementById("creditsPanel");
 const connectionsPanel = document.getElementById("connectionsPanel");
 const toast = document.getElementById("toast");
+const gate = document.getElementById("gate");
 const app = document.getElementById("app");
+const gateForm = document.getElementById("gateForm");
+const gateCode = document.getElementById("gateCode");
+const gateError = document.getElementById("gateError");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
 const chatLockMessage = document.getElementById("chatLockMessage");
@@ -67,10 +73,22 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function getStoredAccessCode() {
+  return activeAccessCode;
+}
+
+function setStoredAccessCode(code) {
+  activeAccessCode = code || "";
+}
+
 async function api(path, options = {}) {
+  const code = getStoredAccessCode();
+  const headers = { "Content-Type": "application/json", ...options.headers };
+  if (code) headers["X-Site-Access-Code"] = code;
+
   const res = await fetch(path, {
     credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers,
     ...options,
   });
   const data = await res.json().catch(() => ({}));
@@ -1074,6 +1092,62 @@ authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
 
+function showApp() {
+  gate.classList.add("hidden");
+  app.classList.remove("hidden");
+}
+
+function showGate() {
+  gate.classList.remove("hidden");
+  app.classList.add("hidden");
+}
+
+async function requireGateOnVisit() {
+  try {
+    const data = await fetch("/api/access", { credentials: "same-origin" })
+      .then((res) => res.json());
+    if (!data.enabled) {
+      showApp();
+      return true;
+    }
+  } catch {
+    /* fall through to gate form */
+  }
+
+  showGate();
+  return false;
+}
+
+gateForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  gateError.classList.add("hidden");
+  const code = gateCode.value.trim();
+  if (!code) return;
+
+  try {
+    await fetch("/api/access", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Invalid access code");
+      return data;
+    });
+
+    setStoredAccessCode(code);
+    gateCode.value = "";
+    showApp();
+    await checkAuth();
+    await syncChatAccess();
+  } catch (err) {
+    setStoredAccessCode("");
+    gateError.textContent = err.message || "Invalid access code";
+    gateError.classList.remove("hidden");
+  }
+});
+
 function clearPurchaseQueryParams() {
   const params = new URLSearchParams(window.location.search);
   if (!params.has("purchase")) return;
@@ -1121,7 +1195,10 @@ async function handlePurchaseReturn(tierId) {
   const purchaseTier = params.get("tier");
 
   setupCreditsPanelEvents();
-  app.classList.remove("hidden");
+
+  const unlocked = await requireGateOnVisit();
+  if (!unlocked) return;
+
   await checkAuth();
   handleYoutubeConnectionResult();
   await syncChatAccess();
