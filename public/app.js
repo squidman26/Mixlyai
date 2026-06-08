@@ -44,6 +44,7 @@ let authenticated = false;
 let chatStarted = false;
 let creditStatus = null;
 let selectedPurchaseTier = null;
+let lastCreditsPanelData = null;
 let currentUser = null;
 let youtubeConnected = false;
 let chatLockAction = () => openAuthModal("signin");
@@ -212,37 +213,81 @@ async function loadCredits() {
   try {
     const data = await api("/api/credits");
     creditStatus = data;
+    lastCreditsPanelData = data;
     renderAuth(currentUser, creditStatus);
-    renderCreditsPanel(data);
+    renderCreditsPanel();
     await syncChatAccess();
   } catch (err) {
     creditsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
   }
 }
 
-function canPurchaseTier(data, tierId) {
-  if (!tierId || tierId === "free" || data.unlimited) return false;
-  return tierId !== data.tier;
+function isPaidTier(tierId) {
+  return tierId === "basic" || tierId === "pro";
+}
+
+function isTierSelectable(tier, data) {
+  if (tier.id === "free") return false;
+  if (data.unlimited) return false;
+  if (tier.id === data.tier) return false;
+  return isPaidTier(tier.id);
 }
 
 function getSelectedTier(data) {
   return (data.tiers || []).find((tier) => tier.id === selectedPurchaseTier) ?? null;
 }
 
+function shouldShowCheckout(data, tierId) {
+  if (!tierId || data.unlimited) return false;
+  return isPaidTier(tierId);
+}
+
+function renderTierCard(tier, data) {
+  const isCurrent = tier.id === data.tier;
+  const isSelected = tier.id === selectedPurchaseTier;
+  const selectable = isTierSelectable(tier, data);
+  const statusLabel = data.unlimited
+    ? "Included"
+    : isCurrent
+      ? "Current plan"
+      : tier.id === "free"
+        ? "Starter"
+        : "Upgrade";
+
+  const cardBody = `
+    <div class="tier-card-top">
+      <h4>${escapeHtml(tier.name)}</h4>
+      <span class="tier-status">${statusLabel}</span>
+    </div>
+    <div class="tier-price">${escapeHtml(tier.priceLabel)}</div>
+    <div class="tier-credits">${tier.credits.toLocaleString()} credits</div>
+    ${isSelected ? '<span class="tier-selected-mark" aria-hidden="true">Selected</span>' : ""}`;
+
+  if (!selectable) {
+    return `
+      <div class="tier-card tier-card--static${isCurrent ? " current" : ""}${tier.id === "free" ? " tier-card--free" : ""}">
+        ${cardBody}
+      </div>`;
+  }
+
+  return `
+    <button
+      class="tier-card tier-select-btn${isSelected ? " selected" : ""}"
+      data-tier="${tier.id}"
+      type="button"
+      aria-pressed="${isSelected}"
+    >
+      ${cardBody}
+    </button>`;
+}
+
 function renderCreditsCheckout(data) {
   const selected = getSelectedTier(data);
-  const showCheckout = canPurchaseTier(data, selected?.id);
-
-  if (!showCheckout || !selected) {
+  if (!shouldShowCheckout(data, selected?.id) || !selected) {
     return `<div class="credits-checkout credits-checkout--hidden" id="creditsCheckout" hidden></div>`;
   }
 
-  if (!data.squareConfigured) {
-    return `
-      <div class="credits-checkout" id="creditsCheckout">
-        <p class="credits-checkout-message muted">Square checkout is unavailable right now. Try again later.</p>
-      </div>`;
-  }
+  const squareReady = Boolean(data.squareConfigured);
 
   return `
     <div class="credits-checkout" id="creditsCheckout">
@@ -251,18 +296,30 @@ function renderCreditsCheckout(data) {
         <strong>${escapeHtml(selected.name)} — ${escapeHtml(selected.priceLabel)}</strong>
         <span class="muted">${selected.credits.toLocaleString()} credits after purchase</span>
       </div>
-      <button class="btn btn-primary credits-pay-btn" id="payWithSquareBtn" type="button">
-        Pay with Square
-      </button>
+      <div class="credits-checkout-action">
+        <button
+          class="btn btn-primary credits-pay-btn"
+          id="payWithSquareBtn"
+          type="button"
+          ${squareReady ? "" : "disabled"}
+        >
+          Pay with Square
+        </button>
+        ${
+          squareReady
+            ? ""
+            : '<p class="credits-checkout-message muted">Square checkout is unavailable right now.</p>'
+        }
+      </div>
     </div>`;
 }
 
-function bindCreditsPanelEvents(data) {
+function bindCreditsPanelEvents() {
   creditsPanel.querySelectorAll(".tier-select-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tierId = btn.dataset.tier;
       selectedPurchaseTier = selectedPurchaseTier === tierId ? null : tierId;
-      renderCreditsPanel(data);
+      renderCreditsPanel();
     });
   });
 
@@ -271,47 +328,22 @@ function bindCreditsPanelEvents(data) {
   });
 }
 
-function renderCreditsPanel(data) {
+function renderCreditsPanel() {
+  const data = lastCreditsPanelData;
+  if (!data) return;
+
   const balanceText = data.unlimited
     ? "Unlimited"
     : `${data.credits} credits remaining`;
 
   if (
     selectedPurchaseTier &&
-    !(data.tiers || []).some((tier) => tier.id === selectedPurchaseTier)
+    !(data.tiers || []).some((tier) => isTierSelectable(tier, data) && tier.id === selectedPurchaseTier)
   ) {
     selectedPurchaseTier = null;
   }
 
-  const tierCards = (data.tiers || [])
-    .map((tier) => {
-      const isCurrent = tier.id === data.tier;
-      const isSelected = tier.id === selectedPurchaseTier;
-      const statusLabel = data.unlimited
-        ? "Included"
-        : isCurrent
-          ? "Current plan"
-          : tier.id === "free"
-            ? "Starter"
-            : "Upgrade";
-
-      return `
-        <button
-          class="tier-card tier-select-btn${isCurrent ? " current" : ""}${isSelected ? " selected" : ""}"
-          data-tier="${tier.id}"
-          type="button"
-          aria-pressed="${isSelected}"
-        >
-          <div class="tier-card-top">
-            <h4>${escapeHtml(tier.name)}</h4>
-            <span class="tier-status">${statusLabel}</span>
-          </div>
-          <div class="tier-price">${escapeHtml(tier.priceLabel)}</div>
-          <div class="tier-credits">${tier.credits.toLocaleString()} credits</div>
-          ${isSelected ? '<span class="tier-selected-mark" aria-hidden="true">Selected</span>' : ""}
-        </button>`;
-    })
-    .join("");
+  const tierCards = (data.tiers || []).map((tier) => renderTierCard(tier, data)).join("");
 
   creditsPanel.innerHTML = `
     <div class="credits-summary">
@@ -325,7 +357,7 @@ function renderCreditsPanel(data) {
     </div>
     <div class="credits-plans">
       <h4 class="credits-plans-title">Choose a plan</h4>
-      <p class="credits-plans-desc muted">Tap a plan below to select it. Paid upgrades checkout with Square.</p>
+      <p class="credits-plans-desc muted">Select Basic or Pro to upgrade. Checkout unlocks after you pick a paid plan.</p>
       <div class="tier-grid">${tierCards}</div>
     </div>
     ${renderCreditsCheckout(data)}
@@ -350,7 +382,7 @@ function renderCreditsPanel(data) {
       </div>`;
   }
 
-  bindCreditsPanelEvents(data);
+  bindCreditsPanelEvents();
 }
 
 async function startCheckout(tierId) {
