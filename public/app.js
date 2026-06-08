@@ -114,10 +114,29 @@ function updateCreditsTabLabel(credits) {
   });
 }
 
+function formatRenewalDate(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function isWaitingForPaidRenewal(credits) {
+  return Boolean(credits?.waitingForRenewal);
+}
+
 function renderAuth(user, credits) {
   updateCreditsTabLabel(credits);
 
   if (user) {
+    const planLabel = credits?.planLabel
+      ? `<span class="user-plan-label">${escapeHtml(credits.planLabel)}</span>`
+      : "";
     const creditBadge = credits?.unlimited
       ? '<span class="credits-badge credits-badge-btn" id="creditBadgeBtn">DEVELOPER UNLIMITED TOKENS</span>'
       : credits
@@ -125,7 +144,8 @@ function renderAuth(user, credits) {
         : "";
     authArea.innerHTML = `
       <div class="user-chip">
-        <span>${escapeHtml(user.name)}</span>
+        <span class="user-name">${escapeHtml(user.name)}</span>
+        ${planLabel}
         ${creditBadge}
         <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
       </div>`;
@@ -199,6 +219,7 @@ function canUseChat() {
 function updateChatLock() {
   if (canUseChat()) {
     chatLock.classList.add("hidden");
+    chatLockActionBtn.classList.remove("hidden");
     return;
   }
 
@@ -207,11 +228,20 @@ function updateChatLock() {
   if (!authenticated) {
     chatLockMessage.textContent = "Sign in to chat with the playlist curator.";
     chatLockActionBtn.textContent = "Sign in or create account";
+    chatLockActionBtn.classList.remove("hidden");
     chatLockAction = () => openAuthModal("signin");
+  } else if (isWaitingForPaidRenewal(creditStatus)) {
+    const renewDate = formatRenewalDate(creditStatus.creditsRenewAt);
+    chatLockMessage.textContent = renewDate
+      ? `You're out of credits. Your ${creditStatus.tierName} plan renews on ${renewDate}. Please wait until then to chat again.`
+      : `You're out of credits. Your ${creditStatus.tierName} plan will renew soon. Please wait until your credits refresh to chat again.`;
+    chatLockActionBtn.classList.add("hidden");
+    chatLockAction = () => {};
   } else {
     chatLockMessage.textContent =
       "You are out of credits. Open Credits to upgrade or purchase more before chatting.";
     chatLockActionBtn.textContent = "Go to Credits";
+    chatLockActionBtn.classList.remove("hidden");
     chatLockAction = openCreditsPanel;
   }
 }
@@ -397,6 +427,14 @@ function renderCreditsPanel() {
   }
 
   const balanceText = `${data.credits} credits remaining`;
+  const renewalNote =
+    isPaidTier(data.tier) && data.creditsRenewAt
+      ? `<p class="credits-renewal muted">Credits renew on ${escapeHtml(formatRenewalDate(data.creditsRenewAt))}.</p>`
+      : "";
+  const outOfCreditsNote =
+    isWaitingForPaidRenewal(data)
+      ? `<p class="credits-waiting muted">You're out of credits. Chat unlocks when your plan renews on ${escapeHtml(formatRenewalDate(data.creditsRenewAt))}.</p>`
+      : "";
 
   if (
     selectedPurchaseTier &&
@@ -412,6 +450,8 @@ function renderCreditsPanel() {
       <h3>${escapeHtml(data.tierName)} plan</h3>
       <div class="credits-balance">${escapeHtml(balanceText)}</div>
       <p class="muted">${data.tierCredits.toLocaleString()} credits included on this tier.</p>
+      ${renewalNote}
+      ${outOfCreditsNote}
       <div class="credits-costs">
         <span>Chat: ${data.costs.chatMessage ? `${data.costs.chatMessage} credit` : "Free"}</span>
         <span>Save playlist: ${data.costs.exportPlaylist} credits</span>
@@ -472,7 +512,13 @@ async function startCheckout(tierId) {
 
 function updateCreditsFromResponse(data) {
   if (!creditStatus || data.unlimitedCredits || data.credits == null) return;
-  creditStatus = { ...creditStatus, credits: data.credits };
+  const credits = data.credits;
+  creditStatus = {
+    ...creditStatus,
+    credits,
+    waitingForRenewal:
+      isPaidTier(creditStatus.tier) && credits <= 0 && Boolean(creditStatus.creditsRenewAt),
+  };
   renderAuth(currentUser, creditStatus);
   syncChatAccess();
 }
@@ -480,11 +526,26 @@ function updateCreditsFromResponse(data) {
 async function handleInsufficientCredits(err) {
   if (!/insufficient credits/i.test(err.message)) return false;
   if (creditStatus && !creditStatus.unlimited) {
-    creditStatus = { ...creditStatus, credits: 0 };
+    creditStatus = {
+      ...creditStatus,
+      credits: 0,
+      waitingForRenewal:
+        isPaidTier(creditStatus.tier) && Boolean(creditStatus.creditsRenewAt),
+    };
     renderAuth(currentUser, creditStatus);
   }
-  showToast("You are out of credits. Open Credits to upgrade.", true);
-  openCreditsPanel();
+  if (isWaitingForPaidRenewal(creditStatus)) {
+    const renewDate = formatRenewalDate(creditStatus.creditsRenewAt);
+    showToast(
+      renewDate
+        ? `Out of credits. Your plan renews on ${renewDate}.`
+        : "Out of credits. Please wait for your plan to renew.",
+      true
+    );
+  } else {
+    showToast("You are out of credits. Open Credits to upgrade.", true);
+    openCreditsPanel();
+  }
   await loadCredits();
   await syncChatAccess();
   return true;

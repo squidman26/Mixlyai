@@ -453,6 +453,22 @@ body {
   font-size: 0.875rem;
 }
 
+.user-name {
+  font-weight: 500;
+}
+
+.user-plan-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
 /* ── Playlists ── */
 
 .playlist-list {
