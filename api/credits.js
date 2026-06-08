@@ -5,6 +5,7 @@ import {
   getTierDefinition,
   listCreditTransactions,
   recordPendingPurchase,
+  countPendingPurchases,
   syncPendingPurchasesForAccount,
 } from "../lib/credits.js";
 import {
@@ -46,30 +47,47 @@ async function getCreditsStatus(req, res) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function confirmPurchase(req, res, body) {
   const { session } = getSession(req, res);
   if (!requireAppSession(req, res, session)) return;
 
   const tier = getTierDefinition(body.tier);
+  const tierId = tier?.id !== "free" ? tier?.id : null;
 
-  let account = await syncPendingPurchasesForAccount(
-    session.accountId,
-    tier?.id !== "free" ? tier?.id : null
-  );
-  if (!account) {
+  let result = await syncPendingPurchasesForAccount(session.accountId, tierId);
+  if (!result.account) {
     json(res, 404, { error: "Account not found" });
     return;
   }
 
-  account = await ensureAccountCredits(null, account);
+  if (!result.applied && result.pendingCount > 0) {
+    await sleep(2000);
+    result = await syncPendingPurchasesForAccount(session.accountId, tierId);
+  }
+
+  if (!result.applied && result.pendingCount > 0 && tierId) {
+    const fallback = await syncPendingPurchasesForAccount(session.accountId, null);
+    if (fallback.applied) {
+      result = fallback;
+    }
+  }
+
+  let account = await ensureAccountCredits(null, result.account);
   const transactions = await listCreditTransactions(session.accountId);
+  const pendingCount = await countPendingPurchases(session.accountId, tierId);
+  const purchaseApplied = result.applied || (tierId ? account?.tier === tierId : false);
 
   json(res, 200, {
     ...buildCreditStatus(account, null),
     squareConfigured: isSquareConfigured(),
     supabaseSynced: true,
     transactions,
-    purchaseConfirmed: true,
+    purchaseApplied,
+    purchasePending: pendingCount > 0 && !purchaseApplied,
   });
 }
 

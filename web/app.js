@@ -1186,6 +1186,17 @@ function clearPurchaseQueryParams() {
   );
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function confirmPurchaseOnServer(tierId) {
+  return api("/api/credits", {
+    method: "POST",
+    body: JSON.stringify({ action: "confirm", tier: tierId || undefined }),
+  });
+}
+
 async function handlePurchaseReturn(tierId) {
   selectedPurchaseTier = null;
 
@@ -1196,16 +1207,34 @@ async function handlePurchaseReturn(tierId) {
   }
 
   try {
-    const data = await api("/api/credits", {
-      method: "POST",
-      body: JSON.stringify({ action: "confirm", tier: tierId || undefined }),
-    });
+    let data = await confirmPurchaseOnServer(tierId);
+    let attempts = 0;
+
+    while (!data.purchaseApplied && data.purchasePending && attempts < 4) {
+      await sleep(2000);
+      data = await confirmPurchaseOnServer(tierId);
+      attempts += 1;
+    }
+
     creditStatus = data;
     lastCreditsPanelData = data;
     renderAuth(currentUser, creditStatus);
     renderCreditsPanel();
     await syncChatAccess();
-    showToast(`Purchase complete! You now have ${data.credits?.toLocaleString?.() ?? data.tierCredits} credits.`);
+
+    if (data.purchaseApplied) {
+      showToast(`Purchase complete! You now have ${data.credits.toLocaleString()} credits.`);
+    } else if (data.purchasePending) {
+      showToast(
+        "Payment received. Your credits are still processing — this page will update shortly.",
+        true
+      );
+      await loadCredits();
+    } else {
+      showToast("Payment received. Refresh this page if your credits have not updated yet.", true);
+      await loadCredits();
+    }
+
     openCreditsPanel();
   } catch (err) {
     showToast(err.message || "Purchase received. Refresh after signing in.", true);

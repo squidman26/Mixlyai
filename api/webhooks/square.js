@@ -2,6 +2,7 @@ import { completePurchaseFromPayment, getTierDefinition } from "../../lib/credit
 import { json } from "../../lib/api.js";
 import {
   fetchSquareOrder,
+  fetchSquarePayment,
   getSquareWebhookUrl,
   normalizeAccountId,
   verifySquareWebhookSignature,
@@ -58,6 +59,22 @@ function resolvePurchaseMeta(payment, order) {
   return null;
 }
 
+async function resolvePaymentFromEvent(event) {
+  const payment =
+    event.data?.object?.payment ??
+    event.data?.object?.payment_updated?.payment ??
+    event.data?.object?.payment_created?.payment;
+
+  if (payment?.id) return payment;
+
+  const paymentId = event.data?.id;
+  if (paymentId && event.data?.type === "payment") {
+    return fetchSquarePayment(paymentId);
+  }
+
+  return null;
+}
+
 async function handlePaymentUpdated(payment) {
   if (!payment?.id || payment.status !== "COMPLETED") return;
 
@@ -97,9 +114,8 @@ export default async function handler(req, res) {
     const eventType = event.type;
 
     if (eventType === "payment.updated" || eventType === "payment.created") {
-      await handlePaymentUpdated(event.data?.object?.payment_updated?.payment
-        ?? event.data?.object?.payment_created?.payment
-        ?? event.data?.object?.payment);
+      const payment = await resolvePaymentFromEvent(event);
+      await handlePaymentUpdated(payment);
     }
 
     json(res, 200, { received: true });
