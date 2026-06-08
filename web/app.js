@@ -518,7 +518,7 @@ function renderCreditsPanel() {
       <div class="tier-grid">${tierCards}</div>
     </div>
     ${renderCreditsCheckout(data)}
-    <p class="credits-note">Credits refresh to your tier allowance after purchase.</p>
+    <p class="credits-note">Credits refresh to your tier allowance after purchase. Your balance may take a short time to update while payment is confirmed.</p>
     <div class="credit-history" id="creditHistory"></div>`;
 
   const history = document.getElementById("creditHistory");
