@@ -22,6 +22,9 @@ const signUpError = document.getElementById("signUpError");
 const REMEMBER_LOGIN_KEY = "mixly_remember_login";
 const SAVED_LOGIN_KEY = "mixly_saved_login";
 const ACCESS_CODE_KEY = "mixly_site_access_code";
+const PENDING_PURCHASE_KEY = "mixly_pending_purchase_tier";
+
+let pendingPurchaseTierId = null;
 
 let activeAccessCode = "";
 const planModal = document.getElementById("planModal");
@@ -76,7 +79,7 @@ function escapeHtml(s) {
 
 function readAccessCodeFromStorage() {
   try {
-    return sessionStorage.getItem(ACCESS_CODE_KEY) || "";
+    return localStorage.getItem(ACCESS_CODE_KEY) || sessionStorage.getItem(ACCESS_CODE_KEY) || "";
   } catch {
     return "";
   }
@@ -89,11 +92,51 @@ function getStoredAccessCode() {
 function setStoredAccessCode(code) {
   activeAccessCode = code || "";
   try {
-    if (code) sessionStorage.setItem(ACCESS_CODE_KEY, code);
-    else sessionStorage.removeItem(ACCESS_CODE_KEY);
+    if (code) {
+      localStorage.setItem(ACCESS_CODE_KEY, code);
+      sessionStorage.setItem(ACCESS_CODE_KEY, code);
+    } else {
+      localStorage.removeItem(ACCESS_CODE_KEY);
+      sessionStorage.removeItem(ACCESS_CODE_KEY);
+    }
   } catch {
     /* private browsing */
   }
+}
+
+function hasPurchaseReturnParams() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("purchase") === "success";
+}
+
+function getPurchaseReturnTier() {
+  return new URLSearchParams(window.location.search).get("tier");
+}
+
+function setPendingPurchaseTier(tierId) {
+  pendingPurchaseTierId = tierId || null;
+  try {
+    if (tierId) localStorage.setItem(PENDING_PURCHASE_KEY, tierId);
+    else localStorage.removeItem(PENDING_PURCHASE_KEY);
+  } catch {
+    /* private browsing */
+  }
+}
+
+function getPendingPurchaseTier() {
+  if (pendingPurchaseTierId) return pendingPurchaseTierId;
+  try {
+    return localStorage.getItem(PENDING_PURCHASE_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function resumePendingPurchaseAfterAuth() {
+  const tier = getPendingPurchaseTier();
+  if (!tier || !authenticated) return;
+  setPendingPurchaseTier(null);
+  await handlePurchaseReturn(tier);
 }
 
 activeAccessCode = readAccessCodeFromStorage();
@@ -1012,6 +1055,7 @@ async function handleSignIn(e) {
     await checkAuth();
     await syncChatAccess();
     showToast("Signed in");
+    await resumePendingPurchaseAfterAuth();
   } catch (err) {
     signInError.textContent = err.message;
     signInError.classList.remove("hidden");
@@ -1040,6 +1084,7 @@ async function handleSignUp(e) {
     await checkAuth();
     await syncChatAccess();
     showToast("Account created");
+    await resumePendingPurchaseAfterAuth();
   } catch (err) {
     signUpError.textContent = err.message;
     signUpError.classList.remove("hidden");
@@ -1120,6 +1165,11 @@ function showGate() {
 }
 
 async function requireGateOnVisit() {
+  if (hasPurchaseReturnParams()) {
+    showApp();
+    return true;
+  }
+
   try {
     const headers = {};
     const code = getStoredAccessCode();
@@ -1134,12 +1184,37 @@ async function requireGateOnVisit() {
       showApp();
       return true;
     }
+
+    const authStatus = await fetch("/api/auth/status", {
+      credentials: "same-origin",
+      headers,
+    })
+      .then((res) => res.json())
+      .catch(() => ({ authenticated: false }));
+
+    if (authStatus.authenticated) {
+      showApp();
+      return true;
+    }
   } catch {
     /* fall through to gate form */
   }
 
   showGate();
   return false;
+}
+
+async function finishPurchaseReturnIfNeeded() {
+  const tier = hasPurchaseReturnParams() ? getPurchaseReturnTier() : getPendingPurchaseTier();
+  if (!tier && !hasPurchaseReturnParams()) return;
+
+  if (hasPurchaseReturnParams()) {
+    if (getPurchaseReturnTier()) setPendingPurchaseTier(getPurchaseReturnTier());
+    clearPurchaseQueryParams();
+  }
+
+  await checkAuth();
+  await handlePurchaseReturn(tier || getPendingPurchaseTier());
 }
 
 gateForm.addEventListener("submit", async (e) => {
@@ -1165,6 +1240,7 @@ gateForm.addEventListener("submit", async (e) => {
     showApp();
     await checkAuth();
     await syncChatAccess();
+    await finishPurchaseReturnIfNeeded();
   } catch (err) {
     setStoredAccessCode("");
     gateError.textContent = err.message || "Invalid access code";
@@ -1201,10 +1277,13 @@ async function handlePurchaseReturn(tierId) {
   selectedPurchaseTier = null;
 
   if (!authenticated) {
+    if (tierId) setPendingPurchaseTier(tierId);
     showToast("Purchase received. Sign in to apply your credits.", true);
     openAuthModal("signin");
     return;
   }
+
+  setPendingPurchaseTier(null);
 
   try {
     let data = await confirmPurchaseOnServer(tierId);
@@ -1237,21 +1316,24 @@ async function handlePurchaseReturn(tierId) {
 
     openCreditsPanel();
   } catch (err) {
-    showToast(err.message || "Purchase received. Refresh after signing in.", true);
+    const denied = /access denied/i.test(err.message || "");
+    showToast(
+      denied
+        ? "Enter the site access code, then return to Credits to finish applying your purchase."
+        : err.message || "Purchase received. Refresh after signing in.",
+      true
+    );
+    if (denied) showGate();
     openCreditsPanel();
   }
 }
 
 (async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const purchaseSuccess = params.get("purchase") === "success";
-  const purchaseTier = params.get("tier");
-
   setupCreditsPanelEvents();
 
   const unlocked = await requireGateOnVisit();
   if (!unlocked) {
-    if (purchaseSuccess) {
+    if (hasPurchaseReturnParams()) {
       gateError.textContent = "Enter your access code to finish applying your purchase.";
       gateError.classList.remove("hidden");
     }
@@ -1261,9 +1343,5 @@ async function handlePurchaseReturn(tierId) {
   await checkAuth();
   handleYoutubeConnectionResult();
   await syncChatAccess();
-
-  if (purchaseSuccess) {
-    clearPurchaseQueryParams();
-    await handlePurchaseReturn(purchaseTier);
-  }
+  await finishPurchaseReturnIfNeeded();
 })();
