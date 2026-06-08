@@ -58,7 +58,7 @@ export default function handler(req, res) {
     return;
   }
 
-  const absolute = join(process.cwd(), "public", filePath);
+  const absolute = join(process.cwd(), "web", filePath);
   if (!existsSync(absolute)) {
     deny(res);
     return;
