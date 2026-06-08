@@ -1,13 +1,13 @@
+import crypto from "crypto";
 import {
   buildConnectionsResponse,
   disconnectAccountConnection,
   listAccountConnections,
-  upsertYoutubeConnection,
 } from "../lib/connections.js";
 import {
-  clearYoutubeOAuthPending,
+  buildGoogleAuthorizeUrl,
+  generatePkcePair,
   isYoutubeOAuthConfigured,
-  readYoutubeOAuthPending,
   setYoutubeOAuthPending,
 } from "../lib/google-auth.js";
 import {
@@ -17,7 +17,6 @@ import {
   requireAppSession,
   requireMethod,
 } from "../lib/api.js";
-import { getBaseUrl } from "../lib/config.js";
 import { requireAccess } from "../lib/gate.js";
 
 export default async function handler(req, res) {
@@ -59,45 +58,22 @@ export default async function handler(req, res) {
         if (!isYoutubeOAuthConfigured()) {
           json(res, 503, {
             error:
-              "YouTube connect is not configured. Add GOOGLE_CLIENT_ID and Supabase keys.",
+              "YouTube connect is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
           });
           return;
         }
 
-        setYoutubeOAuthPending(res, { accountId: session.accountId });
+        const { codeVerifier, codeChallenge } = generatePkcePair();
+        const state = crypto.randomBytes(16).toString("base64url");
+        setYoutubeOAuthPending(res, {
+          accountId: session.accountId,
+          state,
+          codeVerifier,
+        });
+
         json(res, 200, {
           ok: true,
-          redirectTo: `${getBaseUrl(req)}/?connections=youtube`,
-        });
-        return;
-      }
-
-      if (body.action === "complete-youtube") {
-        const pending = readYoutubeOAuthPending(req);
-        if (!pending || pending.accountId !== session.accountId) {
-          json(res, 400, { error: "YouTube OAuth session expired. Try connecting again." });
-          return;
-        }
-
-        if (!body.accessToken) {
-          json(res, 400, { error: "Missing Google access token" });
-          return;
-        }
-
-        await upsertYoutubeConnection(session.accountId, {
-          accessToken: body.accessToken,
-          refreshToken: body.refreshToken ?? null,
-          expiresIn: body.expiresIn ?? 3600,
-          externalId: body.externalId ?? null,
-          displayName: body.displayName ?? null,
-          scope: body.scope ?? null,
-        });
-        clearYoutubeOAuthPending(res);
-
-        const connections = await listAccountConnections(session.accountId);
-        json(res, 200, {
-          ok: true,
-          connections: buildConnectionsResponse(connections),
+          authorizeUrl: buildGoogleAuthorizeUrl(req, { state, codeChallenge }),
         });
         return;
       }

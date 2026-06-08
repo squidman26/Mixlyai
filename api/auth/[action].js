@@ -2,8 +2,16 @@ import { getAccountById } from "../../lib/accounts.js";
 import { signIn, signUp, isAppAuthenticated } from "../../lib/app-auth.js";
 import { buildCreditStatus, ensureAccountCredits, getAccountCredits } from "../../lib/credits.js";
 import { getCanonicalBaseUrl } from "../../lib/config.js";
-import { getSupabasePublicConfig } from "../../lib/google-auth.js";
-import { getSession, json, readJsonBody, requireMethod } from "../../lib/api.js";
+import { upsertYoutubeConnection } from "../../lib/connections.js";
+import {
+  clearYoutubeOAuthPending,
+  exchangeGoogleAuthorizationCode,
+  fetchGoogleUserProfile,
+  getSupabasePublicConfig,
+  getYoutubeRedirectUri,
+  readYoutubeOAuthPending,
+} from "../../lib/google-auth.js";
+import { getSession, json, readJsonBody, redirect, requireMethod } from "../../lib/api.js";
 import { requireAccess } from "../../lib/gate.js";
 import { isSquareConfigured } from "../../lib/square.js";
 
@@ -128,11 +136,85 @@ function handleInfo(req, res) {
   });
 }
 
+function connectionsRedirect(status, message) {
+  const params = new URLSearchParams({
+    connections: "youtube",
+    status,
+  });
+  if (message) params.set("message", message);
+  return `/?${params}`;
+}
+
+async function handleYoutubeCallback(req, res) {
+  if (!requireMethod(req, res, "GET")) return;
+
+  const oauthError = req.query?.error;
+  if (oauthError) {
+    clearYoutubeOAuthPending(res);
+    redirect(
+      res,
+      connectionsRedirect("error", String(req.query?.error_description || oauthError))
+    );
+    return;
+  }
+
+  const code = req.query?.code;
+  const state = req.query?.state;
+  const pending = readYoutubeOAuthPending(req);
+
+  if (!code || !state || !pending) {
+    clearYoutubeOAuthPending(res);
+    redirect(res, connectionsRedirect("error", "Missing OAuth state or code"));
+    return;
+  }
+
+  if (state !== pending.state) {
+    clearYoutubeOAuthPending(res);
+    redirect(res, connectionsRedirect("error", "OAuth state mismatch"));
+    return;
+  }
+
+  const { session } = getSession(req, res);
+  if (!session?.accountId || session.accountId !== pending.accountId) {
+    clearYoutubeOAuthPending(res);
+    redirect(res, connectionsRedirect("error", "Sign in before connecting YouTube"));
+    return;
+  }
+
+  try {
+    const redirectUri = getYoutubeRedirectUri(req);
+    const tokens = await exchangeGoogleAuthorizationCode({
+      code,
+      redirectUri,
+      codeVerifier: pending.codeVerifier,
+    });
+    const profile = await fetchGoogleUserProfile(tokens.access_token);
+    await upsertYoutubeConnection(session.accountId, {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token ?? null,
+      expiresIn: tokens.expires_in ?? 3600,
+      externalId: profile.id ?? null,
+      displayName: profile.name || profile.email || null,
+      scope: tokens.scope ?? null,
+    });
+    clearYoutubeOAuthPending(res);
+    redirect(res, connectionsRedirect("connected"));
+  } catch (err) {
+    clearYoutubeOAuthPending(res);
+    redirect(res, connectionsRedirect("error", err.message || "YouTube connection failed"));
+  }
+}
+
 export default async function handler(req, res) {
   const action = req.query?.action;
 
   if (action === "info") {
     handleInfo(req, res);
+    return;
+  }
+
+  if (action === "youtube-callback") {
+    await handleYoutubeCallback(req, res);
     return;
   }
 

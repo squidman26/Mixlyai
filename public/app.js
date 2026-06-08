@@ -535,104 +535,34 @@ function renderConnectionsPanel(connections) {
   });
 }
 
-const YOUTUBE_SCOPES = [
-  "https://www.googleapis.com/auth/youtube.force-ssl",
-  "https://www.googleapis.com/auth/youtube",
-].join(" ");
-
-async function createSupabaseBrowserClient() {
-  const config = await api("/api/auth/info");
-  if (!config.supabaseUrl || !config.supabasePublishableKey) {
-    throw new Error("Supabase is not configured for browser auth");
-  }
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.1");
-  return createClient(config.supabaseUrl, config.supabasePublishableKey, {
-    auth: {
-      flowType: "pkce",
-      detectSessionInUrl: true,
-      persistSession: true,
-    },
-  });
-}
-
-async function startYoutubeOAuth(redirectTo) {
-  const supabase = await createSupabaseBrowserClient();
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo,
-      scopes: YOUTUBE_SCOPES,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
-    },
-  });
-  if (error) throw error;
-}
-
-async function completeYoutubeSession(session, supabase) {
-  await api("/api/connections", {
-    method: "POST",
-    body: JSON.stringify({
-      action: "complete-youtube",
-      accessToken: session.provider_token,
-      refreshToken: session.provider_refresh_token,
-      expiresIn: session.expires_in,
-      externalId: session.user?.id,
-      displayName: session.user?.user_metadata?.full_name || session.user?.email,
-    }),
-  });
-  await supabase.auth.signOut();
-  showToast("YouTube connected!");
-  openConnectionsPanel();
-  await loadConnections();
-  await refreshConnectionState();
-}
-
-async function handleYoutubeOAuthCallback() {
+function handleYoutubeConnectionResult() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("connections") !== "youtube") return false;
-  if (!params.get("code") && !window.location.hash.includes("access_token")) {
-    return false;
-  }
 
-  try {
-    const supabase = await createSupabaseBrowserClient();
-    let session = (await supabase.auth.getSession()).data.session;
+  const status = params.get("status");
+  const message = params.get("message");
 
-    if (!session?.provider_token && params.get("code")) {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(
-        params.get("code")
-      );
-      if (error) throw error;
-      session = data.session;
-    }
-
-    if (!session?.provider_token) {
-      throw new Error(
-        "Google did not return a provider token. Check YouTube API scopes and Supabase Google provider settings."
-      );
-    }
-
-    await completeYoutubeSession(session, supabase);
-  } catch (err) {
-    showToast(err.message || "YouTube connection failed", true);
+  if (status === "connected") {
+    showToast("YouTube connected!");
     openConnectionsPanel();
-  } finally {
-    params.delete("connections");
-    params.delete("code");
-    params.delete("error");
-    params.delete("error_description");
-    const nextSearch = params.toString();
-    window.history.replaceState(
-      {},
-      "",
-      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`
-    );
+    loadConnections();
+    refreshConnectionState();
+  } else if (status === "error") {
+    showToast(message || "YouTube connection failed", true);
+    openConnectionsPanel();
   }
 
-  return true;
+  params.delete("connections");
+  params.delete("status");
+  params.delete("message");
+  const nextSearch = params.toString();
+  window.history.replaceState(
+    {},
+    "",
+    `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`
+  );
+
+  return status === "connected" || status === "error";
 }
 
 async function connectProvider(provider) {
@@ -641,8 +571,8 @@ async function connectProvider(provider) {
       method: "POST",
       body: JSON.stringify({ action: "connect", provider }),
     });
-    if (provider === "youtube" && data.redirectTo) {
-      await startYoutubeOAuth(data.redirectTo);
+    if (provider === "youtube" && data.authorizeUrl) {
+      window.location.href = data.authorizeUrl;
       return;
     }
     showToast("Connected!");
@@ -820,6 +750,6 @@ authModal?.addEventListener("click", (e) => {
 
   app.classList.remove("hidden");
   await checkAuth();
-  await handleYoutubeOAuthCallback();
+  handleYoutubeConnectionResult();
   await syncChatWithAuth(authenticated);
 })();
