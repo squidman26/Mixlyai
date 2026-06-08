@@ -7,10 +7,13 @@ on:
         description: "Dry run only (list, do not delete)"
         required: false
         default: "false"
+  push:
+    branches: [main]
 
 jobs:
   prune:
     name: Delete test accounts except Ayden
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[prune-accounts]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
