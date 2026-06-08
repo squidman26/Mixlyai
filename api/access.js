@@ -1,10 +1,12 @@
 import {
+  getAccessCode,
   hasAccess,
   isGateEnabled,
   verifyAccessCode,
 } from "../lib/gate.js";
 import { getSupabaseAdmin } from "../lib/supabase.js";
 import { json, readJsonBody, requireMethod } from "../lib/api.js";
+import { clearAccessCookie, setAccessCookie } from "../lib/session.js";
 
 function matchesKeepAccount(account) {
   const keepName = (process.env.KEEP_ACCOUNT_NAME || "Ayden").trim().toLowerCase();
@@ -67,9 +69,12 @@ export default async function handler(req, res) {
     }
 
     if (!verifyAccessCode(body.code)) {
+      clearAccessCookie(res);
       json(res, 401, { error: "Invalid access code" });
       return;
     }
+
+    setAccessCookie(res, getAccessCode());
 
     if (body.action === "prune-test-accounts") {
       try {

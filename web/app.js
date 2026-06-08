@@ -22,7 +22,6 @@ const signUpError = document.getElementById("signUpError");
 const REMEMBER_LOGIN_KEY = "mixly_remember_login";
 const SAVED_LOGIN_KEY = "mixly_saved_login";
 
-let activeAccessCode = "";
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const exportBtn = document.getElementById("exportBtn");
@@ -73,18 +72,8 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-function getStoredAccessCode() {
-  return activeAccessCode;
-}
-
-function setStoredAccessCode(code) {
-  activeAccessCode = code || "";
-}
-
 async function api(path, options = {}) {
-  const code = getStoredAccessCode();
   const headers = { "Content-Type": "application/json", ...options.headers };
-  if (code) headers["X-Site-Access-Code"] = code;
 
   const res = await fetch(path, {
     credentials: "same-origin",
@@ -1106,7 +1095,7 @@ async function requireGateOnVisit() {
   try {
     const data = await fetch("/api/access", { credentials: "same-origin" })
       .then((res) => res.json());
-    if (!data.enabled) {
+    if (!data.enabled || data.unlocked) {
       showApp();
       return true;
     }
@@ -1136,13 +1125,11 @@ gateForm.addEventListener("submit", async (e) => {
       return data;
     });
 
-    setStoredAccessCode(code);
     gateCode.value = "";
     showApp();
     await checkAuth();
     await syncChatAccess();
   } catch (err) {
-    setStoredAccessCode("");
     gateError.textContent = err.message || "Invalid access code";
     gateError.classList.remove("hidden");
   }
