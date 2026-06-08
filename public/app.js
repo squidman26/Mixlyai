@@ -31,7 +31,8 @@ const toast = document.getElementById("toast");
 const app = document.getElementById("app");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
-const chatLockSignInBtn = document.getElementById("chatLockSignInBtn");
+const chatLockMessage = document.getElementById("chatLockMessage");
+const chatLockActionBtn = document.getElementById("chatLockActionBtn");
 const headerCreditsBtn = document.getElementById("headerCreditsBtn");
 const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
 
@@ -43,6 +44,7 @@ let chatStarted = false;
 let creditStatus = null;
 let currentUser = null;
 let youtubeConnected = false;
+let chatLockAction = () => openAuthModal("signin");
 
 function showToast(text, isError = false) {
   toast.textContent = text;
@@ -164,11 +166,33 @@ async function checkAuth() {
   }
 }
 
+function hasUsableCredits() {
+  if (!creditStatus) return false;
+  if (creditStatus.unlimited) return true;
+  return (creditStatus.credits ?? 0) > 0;
+}
+
+function canUseChat() {
+  return authenticated && hasUsableCredits();
+}
+
 function updateChatLock() {
-  if (authenticated) {
+  if (canUseChat()) {
     chatLock.classList.add("hidden");
+    return;
+  }
+
+  chatLock.classList.remove("hidden");
+
+  if (!authenticated) {
+    chatLockMessage.textContent = "Sign in to chat with the playlist curator.";
+    chatLockActionBtn.textContent = "Sign in or create account";
+    chatLockAction = () => openAuthModal("signin");
   } else {
-    chatLock.classList.remove("hidden");
+    chatLockMessage.textContent =
+      "You are out of credits. Open Credits to upgrade or purchase more before chatting.";
+    chatLockActionBtn.textContent = "Go to Credits";
+    chatLockAction = openCreditsPanel;
   }
 }
 
@@ -184,6 +208,7 @@ async function loadCredits() {
     creditStatus = data;
     renderAuth(currentUser, creditStatus);
     renderCreditsPanel(data);
+    await syncChatAccess();
   } catch (err) {
     creditsPanel.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
   }
@@ -270,13 +295,19 @@ function updateCreditsFromResponse(data) {
   if (!creditStatus || data.unlimitedCredits || data.credits == null) return;
   creditStatus = { ...creditStatus, credits: data.credits };
   renderAuth(currentUser, creditStatus);
+  syncChatAccess();
 }
 
-function handleInsufficientCredits(err) {
+async function handleInsufficientCredits(err) {
   if (!/insufficient credits/i.test(err.message)) return false;
+  if (creditStatus && !creditStatus.unlimited) {
+    creditStatus = { ...creditStatus, credits: 0 };
+    renderAuth(currentUser, creditStatus);
+  }
   showToast("You are out of credits. Open Credits to upgrade.", true);
   openCreditsPanel();
-  loadCredits();
+  await loadCredits();
+  await syncChatAccess();
   return true;
 }
 
@@ -314,8 +345,8 @@ async function unlockAndStartChat() {
   await startChat();
 }
 
-async function syncChatWithAuth(isAuthed) {
-  if (isAuthed) {
+async function syncChatAccess() {
+  if (canUseChat()) {
     await unlockAndStartChat();
   } else {
     lockChat();
@@ -370,6 +401,12 @@ async function sendMessage(text) {
     return;
   }
 
+  if (!hasUsableCredits()) {
+    showToast("You are out of credits. Open Credits to upgrade.", true);
+    openCreditsPanel();
+    return;
+  }
+
   messages.push({ role: "user", content: text });
   addMessage("user", text);
   chatMessage.disabled = true;
@@ -387,7 +424,7 @@ async function sendMessage(text) {
     if (handleInsufficientCredits(err)) return;
     addMessage("system", `Error: ${err.message}`);
   } finally {
-    if (authenticated) {
+    if (canUseChat()) {
       chatMessage.disabled = false;
       chatMessage.focus();
     }
@@ -656,7 +693,7 @@ async function handleSignIn(e) {
     closeAuthModalPanel();
     signInForm.reset();
     await checkAuth();
-    await syncChatWithAuth(authenticated);
+    await syncChatAccess();
     showToast("Signed in");
   } catch (err) {
     signInError.textContent = err.message;
@@ -681,7 +718,7 @@ async function handleSignUp(e) {
     closeAuthModalPanel();
     signUpForm.reset();
     await checkAuth();
-    await syncChatWithAuth(authenticated);
+    await syncChatAccess();
     showToast("Account created");
   } catch (err) {
     signUpError.textContent = err.message;
@@ -706,6 +743,11 @@ chatForm.addEventListener("submit", (e) => {
   if (!authenticated) {
     showToast("Sign in first", true);
     openAuthModal("signin");
+    return;
+  }
+  if (!hasUsableCredits()) {
+    showToast("You are out of credits. Open Credits to upgrade.", true);
+    openCreditsPanel();
     return;
   }
   const text = chatMessage.value.trim();
@@ -735,7 +777,7 @@ authTabSignIn?.addEventListener("click", () => showAuthTab("signin"));
 authTabSignUp?.addEventListener("click", () => showAuthTab("signup"));
 signInForm?.addEventListener("submit", handleSignIn);
 signUpForm?.addEventListener("submit", handleSignUp);
-chatLockSignInBtn?.addEventListener("click", () => openAuthModal("signin"));
+chatLockActionBtn?.addEventListener("click", () => chatLockAction());
 authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
@@ -751,5 +793,5 @@ authModal?.addEventListener("click", (e) => {
   app.classList.remove("hidden");
   await checkAuth();
   handleYoutubeConnectionResult();
-  await syncChatWithAuth(authenticated);
+  await syncChatAccess();
 })();
