@@ -416,6 +416,24 @@ body {
   gap: 0.5rem;
 }
 
+.plan-youtube-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.plan-youtube-hint.hidden {
+  display: none;
+}
+
+.plan-youtube-connect-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
 .apply-result {
   margin-top: 1rem;
   padding: 0.85rem;

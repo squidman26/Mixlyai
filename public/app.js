@@ -23,6 +23,8 @@ const applyYoutubeBtn = document.getElementById("applyYoutubeBtn");
 const copyCsvBtn = document.getElementById("copyCsvBtn");
 const dismissPlan = document.getElementById("dismissPlan");
 const exportResult = document.getElementById("exportResult");
+const planYoutubeHint = document.getElementById("planYoutubeHint");
+const planYoutubeConnectBtn = document.getElementById("planYoutubeConnectBtn");
 const playlistList = document.getElementById("playlistList");
 const refreshPlaylists = document.getElementById("refreshPlaylists");
 const creditsPanel = document.getElementById("creditsPanel");
@@ -141,7 +143,12 @@ async function refreshConnectionState() {
 }
 
 function updatePlanActions() {
-  applyYoutubeBtn?.classList.toggle("hidden", !youtubeConnected);
+  const showYoutubeApply = youtubeConnected;
+  applyYoutubeBtn?.classList.toggle("hidden", !showYoutubeApply);
+  planYoutubeHint?.classList.toggle(
+    "hidden",
+    !authenticated || showYoutubeApply
+  );
 }
 
 async function checkAuth() {
@@ -758,6 +765,10 @@ chatForm.addEventListener("submit", (e) => {
 
 exportBtn.addEventListener("click", () => runExport());
 applyYoutubeBtn?.addEventListener("click", () => runExport({ applyTo: "youtube" }));
+planYoutubeConnectBtn?.addEventListener("click", () => {
+  planModal.classList.add("hidden");
+  openConnectionsPanel();
+});
 copyCsvBtn.addEventListener("click", copyCsv);
 dismissPlan.addEventListener("click", () => planModal.classList.add("hidden"));
 refreshPlaylists.addEventListener("click", loadPlaylists);
