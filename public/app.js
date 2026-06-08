@@ -223,8 +223,8 @@ function renderCreditsPanel(data) {
       <div class="credits-balance">${escapeHtml(balanceText)}</div>
       <p class="muted">${data.unlimited ? "This account has unlimited credits." : `${data.tierCredits.toLocaleString()} credits included on this tier.`}</p>
       <div class="credits-costs">
-        <span>Chat message: ${data.costs.chatMessage} credit</span>
-        <span>Save & export: ${data.costs.exportPlaylist} credits</span>
+        <span>Chat: ${data.costs.chatMessage ? `${data.costs.chatMessage} credit` : "Free"}</span>
+        <span>Save playlist: ${data.costs.exportPlaylist} credits</span>
       </div>
     </div>
     <div class="tier-grid">${tierCards}</div>
@@ -523,7 +523,7 @@ function renderConnectionsPanel(connections) {
     .join("");
 
   connectionsPanel.innerHTML = `
-    <p class="connections-intro muted">Connect YouTube to apply playlists directly from Mixly. Export still works without a connection.</p>
+    <p class="connections-intro muted">Connect YouTube to apply song and video playlists directly from Mixly.</p>
     <div class="connections-list">${cards}</div>`;
 
   connectionsPanel.querySelectorAll(".connect-btn").forEach((btn) => {

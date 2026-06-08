@@ -3,7 +3,7 @@
 alter table public.accounts
   add column if not exists username text,
   add column if not exists password_hash text,
-  add column if not exists credits integer not null default 100,
+  add column if not exists credits integer not null default 45,
   add column if not exists tier text not null default 'free',
   add column if not exists unlimited_credits boolean not null default false;
 

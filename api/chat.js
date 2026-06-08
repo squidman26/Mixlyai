@@ -11,10 +11,8 @@ import {
   readJsonBody,
   requireAppSession,
   requireMethod,
-  respondInsufficientCredits,
 } from "../lib/api.js";
 import { requireAccess } from "../lib/gate.js";
-import { CREDIT_COSTS, deductCredits } from "../lib/credits.js";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "POST")) return;
@@ -28,16 +26,6 @@ export default async function handler(req, res) {
     const messages = body.messages;
     if (!Array.isArray(messages)) {
       json(res, 400, { error: "messages array required" });
-      return;
-    }
-
-    const creditResult = await deductCredits(
-      session.accountId,
-      CREDIT_COSTS.chatMessage,
-      null
-    );
-    if (!creditResult.ok) {
-      respondInsufficientCredits(res, creditResult);
       return;
     }
 
@@ -55,8 +43,6 @@ export default async function handler(req, res) {
             summary: formatPlanSummary(plan),
           }
         : null,
-      credits: creditResult.unlimited ? null : creditResult.credits,
-      unlimitedCredits: creditResult.unlimited,
     });
   } catch (err) {
     const message = err.message || "Chat failed";

@@ -24,8 +24,9 @@ Users sign up with email, username, and password. Sessions are stored in encrypt
 
 ### Credits
 
-- Chat messages cost 1 credit
-- Save & export costs 2 credits
+- Chat is free
+- Save playlist costs 5 credits
+- New free accounts start with 45 credits (existing accounts keep their balance)
 - Paid tiers via Square
 
 ### YouTube (direct Google OAuth)
