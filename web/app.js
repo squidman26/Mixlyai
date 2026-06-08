@@ -21,12 +21,10 @@ const signUpError = document.getElementById("signUpError");
 
 const REMEMBER_LOGIN_KEY = "mixly_remember_login";
 const SAVED_LOGIN_KEY = "mixly_saved_login";
-const ACCESS_CODE_KEY = "mixly_site_access_code";
 const PENDING_PURCHASE_KEY = "mixly_pending_purchase_tier";
 
 let pendingPurchaseTierId = null;
-
-let activeAccessCode = "";
+let signupsEnabled = false;
 const planModal = document.getElementById("planModal");
 const planSummary = document.getElementById("planSummary");
 const exportBtn = document.getElementById("exportBtn");
@@ -40,11 +38,8 @@ const refreshPlaylists = document.getElementById("refreshPlaylists");
 const creditsPanel = document.getElementById("creditsPanel");
 const connectionsPanel = document.getElementById("connectionsPanel");
 const toast = document.getElementById("toast");
-const gate = document.getElementById("gate");
-const app = document.getElementById("app");
-const gateForm = document.getElementById("gateForm");
-const gateCode = document.getElementById("gateCode");
-const gateError = document.getElementById("gateError");
+const authTabs = document.getElementById("authTabs");
+const signUpDisabledNote = document.getElementById("signUpDisabledNote");
 const chatLock = document.getElementById("chatLock");
 const chatShell = document.getElementById("chatShell");
 const chatLockMessage = document.getElementById("chatLockMessage");
@@ -75,33 +70,6 @@ function escapeHtml(s) {
   const d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
-}
-
-function readAccessCodeFromStorage() {
-  try {
-    return localStorage.getItem(ACCESS_CODE_KEY) || sessionStorage.getItem(ACCESS_CODE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function getStoredAccessCode() {
-  return activeAccessCode;
-}
-
-function setStoredAccessCode(code) {
-  activeAccessCode = code || "";
-  try {
-    if (code) {
-      localStorage.setItem(ACCESS_CODE_KEY, code);
-      sessionStorage.setItem(ACCESS_CODE_KEY, code);
-    } else {
-      localStorage.removeItem(ACCESS_CODE_KEY);
-      sessionStorage.removeItem(ACCESS_CODE_KEY);
-    }
-  } catch {
-    /* private browsing */
-  }
 }
 
 function hasPurchaseReturnParams() {
@@ -139,12 +107,8 @@ async function resumePendingPurchaseAfterAuth() {
   await handlePurchaseReturn(tier);
 }
 
-activeAccessCode = readAccessCodeFromStorage();
-
 async function api(path, options = {}) {
-  const code = getStoredAccessCode();
   const headers = { "Content-Type": "application/json", ...options.headers };
-  if (code) headers["X-Site-Access-Code"] = code;
 
   const res = await fetch(path, {
     credentials: "same-origin",
@@ -187,7 +151,28 @@ function persistSignInPrefs(login, remember) {
   }
 }
 
+function updateSignupUi() {
+  const showSignup = signupsEnabled;
+  authTabSignUp?.classList.toggle("hidden", !showSignup);
+  authTabs?.classList.toggle("hidden", !showSignup);
+  signUpDisabledNote?.classList.toggle("hidden", showSignup);
+  if (!showSignup) showAuthTab("signin");
+}
+
+async function loadAuthConfig() {
+  try {
+    const data = await fetch("/api/auth/info", { credentials: "same-origin" }).then((res) =>
+      res.json()
+    );
+    signupsEnabled = Boolean(data.signupsEnabled);
+  } catch {
+    signupsEnabled = false;
+  }
+  updateSignupUi();
+}
+
 function openAuthModal(mode = "signin") {
+  if (mode === "signup" && !signupsEnabled) mode = "signin";
   authModal.classList.remove("hidden");
   loadSavedSignInPrefs();
   showAuthTab(mode);
@@ -305,6 +290,10 @@ async function checkAuth() {
     authenticated = data.authenticated;
     creditStatus = data.credits ?? null;
     currentUser = data.authenticated ? data.user : null;
+    if (typeof data.signupsEnabled === "boolean") {
+      signupsEnabled = data.signupsEnabled;
+      updateSignupUi();
+    }
     renderAuth(currentUser, creditStatus);
     updateChatLock();
     await refreshConnectionState();
@@ -1146,63 +1135,15 @@ headerCreditsBtn?.addEventListener("click", () => {
 openAuthBtn?.addEventListener("click", () => openAuthModal("signin"));
 closeAuthModal?.addEventListener("click", closeAuthModalPanel);
 authTabSignIn?.addEventListener("click", () => showAuthTab("signin"));
-authTabSignUp?.addEventListener("click", () => showAuthTab("signup"));
+authTabSignUp?.addEventListener("click", () => {
+  if (signupsEnabled) showAuthTab("signup");
+});
 signInForm?.addEventListener("submit", handleSignIn);
 signUpForm?.addEventListener("submit", handleSignUp);
 chatLockActionBtn?.addEventListener("click", () => chatLockAction());
 authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModalPanel();
 });
-
-function showApp() {
-  gate.classList.add("hidden");
-  app.classList.remove("hidden");
-}
-
-function showGate() {
-  gate.classList.remove("hidden");
-  app.classList.add("hidden");
-}
-
-async function requireGateOnVisit() {
-  if (hasPurchaseReturnParams()) {
-    showApp();
-    return true;
-  }
-
-  try {
-    const headers = {};
-    const code = getStoredAccessCode();
-    if (code) headers["X-Site-Access-Code"] = code;
-
-    const data = await fetch("/api/access", {
-      credentials: "same-origin",
-      headers,
-    }).then((res) => res.json());
-
-    if (!data.enabled || data.unlocked) {
-      showApp();
-      return true;
-    }
-
-    const authStatus = await fetch("/api/auth/status", {
-      credentials: "same-origin",
-      headers,
-    })
-      .then((res) => res.json())
-      .catch(() => ({ authenticated: false }));
-
-    if (authStatus.authenticated) {
-      showApp();
-      return true;
-    }
-  } catch {
-    /* fall through to gate form */
-  }
-
-  showGate();
-  return false;
-}
 
 async function finishPurchaseReturnIfNeeded() {
   const tier = hasPurchaseReturnParams() ? getPurchaseReturnTier() : getPendingPurchaseTier();
@@ -1216,37 +1157,6 @@ async function finishPurchaseReturnIfNeeded() {
   await checkAuth();
   await handlePurchaseReturn(tier || getPendingPurchaseTier());
 }
-
-gateForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  gateError.classList.add("hidden");
-  const code = gateCode.value.trim();
-  if (!code) return;
-
-  try {
-    await fetch("/api/access", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    }).then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Invalid access code");
-      return data;
-    });
-
-    setStoredAccessCode(code);
-    gateCode.value = "";
-    showApp();
-    await checkAuth();
-    await syncChatAccess();
-    await finishPurchaseReturnIfNeeded();
-  } catch (err) {
-    setStoredAccessCode("");
-    gateError.textContent = err.message || "Invalid access code";
-    gateError.classList.remove("hidden");
-  }
-});
 
 function clearPurchaseQueryParams() {
   const params = new URLSearchParams(window.location.search);
@@ -1316,30 +1226,14 @@ async function handlePurchaseReturn(tierId) {
 
     openCreditsPanel();
   } catch (err) {
-    const denied = /access denied/i.test(err.message || "");
-    showToast(
-      denied
-        ? "Enter the site access code, then return to Credits to finish applying your purchase."
-        : err.message || "Purchase received. Refresh after signing in.",
-      true
-    );
-    if (denied) showGate();
+    showToast(err.message || "Purchase received. Refresh after signing in.", true);
     openCreditsPanel();
   }
 }
 
 (async function init() {
   setupCreditsPanelEvents();
-
-  const unlocked = await requireGateOnVisit();
-  if (!unlocked) {
-    if (hasPurchaseReturnParams()) {
-      gateError.textContent = "Enter your access code to finish applying your purchase.";
-      gateError.classList.remove("hidden");
-    }
-    return;
-  }
-
+  await loadAuthConfig();
   await checkAuth();
   handleYoutubeConnectionResult();
   await syncChatAccess();

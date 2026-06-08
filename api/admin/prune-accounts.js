@@ -1,6 +1,5 @@
 import { getSupabaseAdmin } from "../../lib/supabase.js";
 import { json, requireMethod } from "../../lib/api.js";
-import { getAccessCodeFromRequest, isGateEnabled, verifyAccessCode } from "../../lib/gate.js";
 
 function matchesKeepAccount(account) {
   const keepName = (process.env.KEEP_ACCOUNT_NAME || "Ayden").trim().toLowerCase();
@@ -12,11 +11,19 @@ function matchesKeepAccount(account) {
 }
 
 function requireAdminAccess(req, res) {
-  if (!isGateEnabled()) return true;
-  const code = getAccessCodeFromRequest(req);
-  if (verifyAccessCode(code)) return true;
-  json(res, 403, { error: "access denied" });
-  return false;
+  const secret = process.env.ADMIN_SECRET?.trim();
+  if (!secret) {
+    json(res, 503, { error: "Admin actions are not configured" });
+    return false;
+  }
+
+  const provided = req.headers?.["x-admin-secret"]?.trim() || "";
+  if (provided !== secret) {
+    json(res, 403, { error: "access denied" });
+    return false;
+  }
+
+  return true;
 }
 
 export default async function handler(req, res) {
