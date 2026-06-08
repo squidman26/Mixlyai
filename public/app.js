@@ -228,7 +228,6 @@ function isPaidTier(tierId) {
 
 function isTierSelectable(tier, data) {
   if (tier.id === "free") return false;
-  if (data.unlimited) return false;
   if (tier.id === data.tier) return false;
   return isPaidTier(tier.id);
 }
@@ -238,7 +237,7 @@ function getSelectedTier(data) {
 }
 
 function shouldShowCheckout(data, tierId) {
-  if (!tierId || data.unlimited) return false;
+  if (!tierId) return false;
   return isPaidTier(tierId);
 }
 
@@ -343,10 +342,14 @@ function renderCreditsCheckout(data) {
     </div>`;
 }
 
-function bindCreditsPanelEvents() {
-  creditsPanel.querySelectorAll(".tier-select-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tierId = btn.dataset.tier;
+function setupCreditsPanelEvents() {
+  if (!creditsPanel || creditsPanel.dataset.eventsBound) return;
+  creditsPanel.dataset.eventsBound = "1";
+
+  creditsPanel.addEventListener("click", (e) => {
+    const tierBtn = e.target.closest(".tier-select-btn");
+    if (tierBtn) {
+      const tierId = tierBtn.dataset.tier;
       selectedPurchaseTier = selectedPurchaseTier === tierId ? null : tierId;
       renderCreditsPanel();
       if (selectedPurchaseTier) {
@@ -356,11 +359,13 @@ function bindCreditsPanelEvents() {
             ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         });
       }
-    });
-  });
+      return;
+    }
 
-  document.getElementById("payWithSquareBtn")?.addEventListener("click", () => {
-    if (selectedPurchaseTier) startCheckout(selectedPurchaseTier);
+    const payBtn = e.target.closest("#payWithSquareBtn");
+    if (payBtn && !payBtn.disabled && selectedPurchaseTier) {
+      startCheckout(selectedPurchaseTier);
+    }
   });
 }
 
@@ -393,7 +398,7 @@ function renderCreditsPanel() {
     </div>
     <div class="credits-plans">
       <h4 class="credits-plans-title">Choose a plan</h4>
-      <p class="credits-plans-desc muted">Select Basic or Pro to upgrade. Pay with Square appears after you pick a plan.</p>
+      <p class="credits-plans-desc muted">Click Basic or Pro to select a plan. The Pay with Square button appears below.</p>
       <div class="tier-grid">${tierCards}</div>
     </div>
     ${renderCreditsCheckout(data)}
@@ -418,7 +423,6 @@ function renderCreditsPanel() {
       </div>`;
   }
 
-  bindCreditsPanelEvents();
 }
 
 async function startCheckout(tierId) {
@@ -953,6 +957,7 @@ authModal?.addEventListener("click", (e) => {
     openCreditsPanel();
   }
 
+  setupCreditsPanelEvents();
   app.classList.remove("hidden");
   await checkAuth();
   handleYoutubeConnectionResult();

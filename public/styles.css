@@ -722,7 +722,6 @@ body {
   text-align: left;
   color: inherit;
   font: inherit;
-  cursor: pointer;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -743,9 +742,17 @@ body {
   opacity: 0.92;
 }
 
-.tier-card:not(.tier-card--static):hover {
+.tier-select-btn {
+  cursor: pointer;
+}
+
+.tier-select-btn:hover {
   border-color: var(--accent-border);
   background: var(--surface-2);
+}
+
+.tier-select-btn:active {
+  transform: scale(0.99);
 }
 
 .tier-card:focus-visible {
