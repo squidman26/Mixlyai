@@ -380,14 +380,12 @@ function isTierSelectable(tier, data) {
   return isPaidTier(tier.id);
 }
 
-function getPlanPickerDescription(data) {
-  if (data.tier === "pro") {
-    return "You are on the highest plan. Upgrades are not available.";
-  }
-  if (data.tier === "basic") {
-    return "Upgrade to Pro to get more credits. The Pay with Square button appears below.";
-  }
-  return "Click Basic or Pro to select a plan. The Pay with Square button appears below.";
+function getPlanPickerDescription() {
+  return "Plan changes are not available right now.";
+}
+
+function hasSelectableTier(data) {
+  return (data.tiers || []).some((tier) => isTierSelectable(tier, data));
 }
 
 function getSelectedTier(data) {
@@ -431,7 +429,9 @@ function renderPaidTierCard(tier, data) {
     ? ""
     : isCurrent
       ? "Current plan"
-      : "Upgrade";
+      : selectable
+        ? "Upgrade"
+        : "";
 
   const cardBody = `
     <div class="tier-card-top">
@@ -573,12 +573,12 @@ function renderCreditsPanel() {
       </div>
     </div>
     <div class="credits-plans">
-      <h4 class="credits-plans-title">Choose a plan</h4>
-      <p class="credits-plans-desc muted">${escapeHtml(getPlanPickerDescription(data))}</p>
+      <h4 class="credits-plans-title">${hasSelectableTier(data) ? "Choose a plan" : "Plans"}</h4>
+      <p class="credits-plans-desc muted">${escapeHtml(getPlanPickerDescription())}</p>
       <div class="tier-grid">${tierCards}</div>
     </div>
-    ${renderCreditsCheckout(data)}
-    <p class="credits-note">Credits refresh to your tier allowance after purchase. Your balance may take a short time to update while payment is confirmed.</p>
+    ${hasSelectableTier(data) ? renderCreditsCheckout(data) : ""}
+    ${hasSelectableTier(data) ? '<p class="credits-note">Credits refresh to your tier allowance after purchase. Your balance may take a short time to update while payment is confirmed.</p>' : ""}
     <div class="credit-history" id="creditHistory"></div>`;
 
   const history = document.getElementById("creditHistory");
