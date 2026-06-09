@@ -115,7 +115,7 @@ async function createCheckout(req, res, body) {
   }
 
   if (!canUpgradeToTier(account.tier, tier.id)) {
-    json(res, 400, { error: "Plan changes are not available right now." });
+    json(res, 400, { error: "Only Free accounts can purchase Basic or Pro." });
     return;
   }
 

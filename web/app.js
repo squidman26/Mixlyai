@@ -380,8 +380,11 @@ function isTierSelectable(tier, data) {
   return isPaidTier(tier.id);
 }
 
-function getPlanPickerDescription() {
-  return "Plan changes are not available right now.";
+function getPlanPickerDescription(data) {
+  if ((data.tier || "free") === "free") {
+    return "Click Basic or Pro to select a plan. The Pay with Square button appears below.";
+  }
+  return "You already have a paid plan. Plan changes are not available.";
 }
 
 function hasSelectableTier(data) {
@@ -574,7 +577,7 @@ function renderCreditsPanel() {
     </div>
     <div class="credits-plans">
       <h4 class="credits-plans-title">${hasSelectableTier(data) ? "Choose a plan" : "Plans"}</h4>
-      <p class="credits-plans-desc muted">${escapeHtml(getPlanPickerDescription())}</p>
+      <p class="credits-plans-desc muted">${escapeHtml(getPlanPickerDescription(data))}</p>
       <div class="tier-grid">${tierCards}</div>
     </div>
     ${hasSelectableTier(data) ? renderCreditsCheckout(data) : ""}
