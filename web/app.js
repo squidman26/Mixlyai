@@ -376,7 +376,18 @@ function isPaidTier(tierId) {
 function isTierSelectable(tier, data) {
   if (tier.id === "free") return false;
   if (tier.id === data.tier) return false;
+  if (tier.selectable === false) return false;
   return isPaidTier(tier.id);
+}
+
+function getPlanPickerDescription(data) {
+  if (data.tier === "pro") {
+    return "You are on the highest plan. Upgrades are not available.";
+  }
+  if (data.tier === "basic") {
+    return "Upgrade to Pro to get more credits. The Pay with Square button appears below.";
+  }
+  return "Click Basic or Pro to select a plan. The Pay with Square button appears below.";
 }
 
 function getSelectedTier(data) {
@@ -563,7 +574,7 @@ function renderCreditsPanel() {
     </div>
     <div class="credits-plans">
       <h4 class="credits-plans-title">Choose a plan</h4>
-      <p class="credits-plans-desc muted">Click Basic or Pro to select a plan. The Pay with Square button appears below.</p>
+      <p class="credits-plans-desc muted">${escapeHtml(getPlanPickerDescription(data))}</p>
       <div class="tier-grid">${tierCards}</div>
     </div>
     ${renderCreditsCheckout(data)}

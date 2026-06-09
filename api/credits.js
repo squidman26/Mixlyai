@@ -1,5 +1,6 @@
 import {
   buildCreditStatus,
+  canUpgradeToTier,
   ensureAccountCredits,
   getAccountCredits,
   getTierDefinition,
@@ -104,6 +105,17 @@ async function createCheckout(req, res, body) {
 
   if (!tier || tier.id === "free") {
     json(res, 400, { error: "Choose Basic or Pro to purchase credits." });
+    return;
+  }
+
+  const account = await getAccountCredits(session.accountId);
+  if (!account) {
+    json(res, 404, { error: "Account not found" });
+    return;
+  }
+
+  if (!canUpgradeToTier(account.tier, tier.id)) {
+    json(res, 400, { error: "You can only upgrade to a higher plan." });
     return;
   }
 
